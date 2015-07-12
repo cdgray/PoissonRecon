@@ -47,6 +47,7 @@ template<class T> class SparseMatrix
 private:
 	bool _contiguous;
 	int _maxEntriesPerRow;
+	void _init( void );
 public:
 	int rows;
 	Pointer( int ) rowSizes;

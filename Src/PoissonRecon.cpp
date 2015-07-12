@@ -40,7 +40,7 @@ DAMAGE.
 #include "SparseMatrix.h"
 #include "CmdLineParser.h"
 #include "PPolynomial.h"
-#include "ply.h"
+#include "Ply.h"
 #include "MemoryUsage.h"
 #include "omp.h"
 
@@ -103,13 +103,14 @@ cmdLineReadable
 #ifdef _WIN32
 	Performance( "performance" ) ,
 #endif // _WIN32
-	Verbose( "verbose" ) ,
+	ShowResidual( "showResidual" ) ,
 	NoComments( "noComments" ) ,
 	PolygonMesh( "polygonMesh" ) ,
 	Confidence( "confidence" ) ,
 	NonManifold( "nonManifold" ) ,
 	ASCII( "ascii" ) ,
-	ShowResidual( "showResidual" );
+	Density( "density" ) ,
+	Verbose( "verbose" );
 
 cmdLineInt
 	Depth( "depth" , 8 ) ,
@@ -146,6 +147,7 @@ cmdLineReadable* params[] =
 	&KernelDepth , &SamplesPerNode , &Confidence , &NonManifold , &PolygonMesh , &ASCII , &ShowResidual , &MinIters , &FixedIters , &VoxelDepth ,
 	&PointWeight , &VoxelGrid , &Threads , &MinDepth , &MaxSolveDepth ,
 	&AdaptiveExponent , &BoundaryType ,
+	&Density ,
 #ifdef _WIN32
 	&Performance ,
 #endif // _WIN32
@@ -214,6 +216,7 @@ void ShowUsage(char* ex)
 	printf( "\t\t If this flag is enabled, the running time and peak memory usage\n" );
 	printf( "\t\t is output after the reconstruction.\n" );
 #endif // _WIN32
+	printf( "\t[--%s]\n" , Density.name );
 	printf( "\t[--%s]\n" , ASCII.name );
 	printf( "\t\t If this flag is enabled, the output file is written out in ASCII format.\n" );
 	printf( "\t[--%s]\n" , NoComments.name );
@@ -221,7 +224,7 @@ void ShowUsage(char* ex)
 	printf( "\t[--%s]\n" , Verbose.name );
 	printf( "\t\t If this flag is enabled, the progress of the reconstructor will be output to STDOUT.\n" );
 }
-template< int Degree >
+template< int Degree , class Vertex , bool OutputDensity >
 int Execute( int argc , char* argv[] )
 {
 	int i;
@@ -232,7 +235,6 @@ int Execute( int argc , char* argv[] )
 	comments = new char*[paramNum+7];
 	for( i=0 ; i<paramNum+7 ; i++ ) comments[i] = new char[1024];
 
-	cmdLineParse( argc-1 , &argv[1] , paramNum , params , 1 );
 	if( Verbose.set ) echoStdout=1;
 
 	XForm4x4< Real > xForm , iXForm;
@@ -253,7 +255,7 @@ int Execute( int argc , char* argv[] )
 	else xForm = XForm4x4< Real >::Identity();
 	iXForm = xForm.inverse();
 
-	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 4.51)\n" , Degree );
+	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 5.0)\n" , Degree );
 	char str[1024];
 	for( int i=0 ; i<paramNum ; i++ )
 		if( params[i]->set )
@@ -267,7 +269,7 @@ int Execute( int argc , char* argv[] )
 	double tt=Time();
 	Real isoValue = 0;
 
-	Octree<Degree> tree;
+	Octree< Degree , OutputDensity > tree;
 	tree.threads = Threads.value;
 	if( !In.set )
 	{
@@ -286,7 +288,7 @@ int Execute( int argc , char* argv[] )
 		IsoDivide.value = MinDepth.value;
 	}
 	
-	TreeOctNode::SetAllocator( MEMORY_ALLOCATOR_BLOCK_SIZE );
+	OctNode< TreeNodeData< OutputDensity > , Real >::SetAllocator( MEMORY_ALLOCATOR_BLOCK_SIZE );
 
 	t=Time();
 	int kernelDepth = KernelDepth.set ?  KernelDepth.value : Depth.value-2;
@@ -322,7 +324,8 @@ int Execute( int argc , char* argv[] )
 	DumpOutput( "Memory Usage: %.3f MB\n" , float( MemoryInfo::Usage() )/(1<<20) );
 	maxMemoryUsage = std::max< double >( maxMemoryUsage , tree.maxMemoryUsage );
 
-	CoredFileMeshData mesh;
+	CoredFileMeshData< Vertex > mesh;
+
 	if( Verbose.set ) tree.maxMemoryUsage=0;
 	t=Time();
 	isoValue = tree.GetIsoValue();
@@ -389,7 +392,10 @@ inline double to_seconds( const FILETIME& ft )
 int main( int argc , char* argv[] )
 {
 	double t = Time();
-	Execute< 2 >( argc , argv );
+
+	cmdLineParse( argc-1 , &argv[1] , sizeof(params)/sizeof(cmdLineReadable*) , params , 1 );
+	if( Density.set ) Execute< 2 , PlyValueVertex< Real > , true  >( argc , argv );
+	else              Execute< 2 ,      PlyVertex< Real > , false >( argc , argv );
 #ifdef _WIN32
 	if( Performance.set )
 	{

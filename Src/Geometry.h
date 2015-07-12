@@ -216,7 +216,8 @@ public:
 	}
 	
 };
-class CoredPointIndex{
+class CoredPointIndex
+{
 public:
 	int index;
 	char inCore;
@@ -228,7 +229,8 @@ class EdgeIndex{
 public:
 	int idx[2];
 };
-class CoredEdgeIndex{
+class CoredEdgeIndex
+{
 public:
 	CoredPointIndex idx[2];
 };
@@ -285,57 +287,27 @@ struct CoredVertexIndex
 	int idx;
 	bool inCore;
 };
+template< class Vertex >
 class CoredMeshData
 {
 public:
-	std::vector<Point3D<float> > inCorePoints;
+	std::vector< Vertex > inCorePoints;
 	virtual void resetIterator( void ) = 0;
 
-	virtual int addOutOfCorePoint( const Point3D<float>& p ) = 0;
+	virtual int addOutOfCorePoint( const Vertex& p ) = 0;
 	virtual int addPolygon( const std::vector< CoredVertexIndex >& vertices ) = 0;
 
-	virtual int nextOutOfCorePoint( Point3D<float>& p )=0;
+	virtual int nextOutOfCorePoint( Vertex& p )=0;
 	virtual int nextPolygon( std::vector< CoredVertexIndex >& vertices ) = 0;
 
 	virtual int outOfCorePointCount(void)=0;
 	virtual int polygonCount( void ) = 0;
 };
-// Stores the iso-span of each vertex, rather than it's position
-class CoredMeshData2
+
+template< class Vertex >
+class CoredVectorMeshData : public CoredMeshData< Vertex >
 {
-public:
-	struct Vertex
-	{
-		Point3D< float > start , end;
-		float value;
-		Vertex( void ) { ; }
-		Vertex( Point3D< float > s , Point3D< float > e , float v ) { start = s , end = e , value = v; }
-		Vertex( Point3D< float > s , Point3D< float > e , Point3D< float > p )
-		{
-			start = s , end = e;
-			// < p , e-s > = < s + v*(e-s) , e-s >
-			// < p , e-s > - < s , e-s > = v || e-s || ^2
-			// v = < p-s , e-s > / || e-s ||^2
-			Point3D< float > p1 = p-s , p2 = e-s;
-			value = ( p1[0] * p2[0] + p1[1] * p2[1] + p1[2] * p2[2] ) / ( p2[0] * p2[0] + p2[1] * p2[1] + p2[2] * p2[2] );
-		}
-	};
-	std::vector< Vertex > inCorePoints;
-	virtual void resetIterator( void ) = 0;
-
-	virtual int addOutOfCorePoint( const Vertex& v ) = 0;
-	virtual int addPolygon( const std::vector< CoredVertexIndex >& vertices ) = 0;
-
-	virtual int nextOutOfCorePoint( Vertex& v ) = 0;
-	virtual int nextPolygon( std::vector< CoredVertexIndex >& vertices ) = 0;
-
-	virtual int outOfCorePointCount( void )=0;
-	virtual int polygonCount( void ) = 0;
-};
-
-class CoredVectorMeshData : public CoredMeshData
-{
-	std::vector<Point3D<float> > oocPoints;
+	std::vector< Vertex > oocPoints;
 	std::vector< std::vector< int > > polygons;
 	int polygonIndex;
 	int oocPointIndex;
@@ -344,33 +316,13 @@ public:
 
 	void resetIterator(void);
 
-	int addOutOfCorePoint( const Point3D<float>& p );
+	int addOutOfCorePoint( const Vertex& p );
 	int addPolygon( const std::vector< CoredVertexIndex >& vertices );
 
-	int nextOutOfCorePoint( Point3D<float>& p );
+	int nextOutOfCorePoint( Vertex& p );
 	int nextPolygon( std::vector< CoredVertexIndex >& vertices );
 
 	int outOfCorePointCount(void);
-	int polygonCount( void );
-};
-class CoredVectorMeshData2 : public CoredMeshData2
-{
-	std::vector< CoredMeshData2::Vertex > oocPoints;
-	std::vector< std::vector< int > > polygons;
-	int polygonIndex;
-	int oocPointIndex;
-public:
-	CoredVectorMeshData2( void );
-
-	void resetIterator(void);
-
-	int addOutOfCorePoint( const CoredMeshData2::Vertex& v );
-	int addPolygon( const std::vector< CoredVertexIndex >& vertices );
-
-	int nextOutOfCorePoint( CoredMeshData2::Vertex& v );
-	int nextPolygon( std::vector< CoredVertexIndex >& vertices );
-
-	int outOfCorePointCount( void );
 	int polygonCount( void );
 };
 class BufferedReadWriteFile
@@ -386,7 +338,8 @@ public:
 	bool read ( void* data , size_t size );
 	void reset( void );
 };
-class CoredFileMeshData : public CoredMeshData
+template< class Vertex >
+class CoredFileMeshData : public CoredMeshData< Vertex >
 {
 	char pointFileName[1024] , polygonFileName[1024];
 	BufferedReadWriteFile *oocPointFile , *polygonFile;
@@ -397,29 +350,10 @@ public:
 
 	void resetIterator( void );
 
-	int addOutOfCorePoint( const Point3D< float >& p );
+	int addOutOfCorePoint( const Vertex& p );
 	int addPolygon( const std::vector< CoredVertexIndex >& vertices );
 
-	int nextOutOfCorePoint( Point3D< float >& p );
-	int nextPolygon( std::vector< CoredVertexIndex >& vertices );
-
-	int outOfCorePointCount( void );
-	int polygonCount( void );
-};
-class CoredFileMeshData2 : public CoredMeshData2
-{
-	FILE *oocPointFile , *polygonFile;
-	int oocPoints , polygons;
-public:
-	CoredFileMeshData2( void );
-	~CoredFileMeshData2( void );
-
-	void resetIterator( void );
-
-	int addOutOfCorePoint( const CoredMeshData2::Vertex& v );
-	int addPolygon( const std::vector< CoredVertexIndex >& vertices );
-
-	int nextOutOfCorePoint( CoredMeshData2::Vertex& v );
+	int nextOutOfCorePoint( Vertex& p );
 	int nextPolygon( std::vector< CoredVertexIndex >& vertices );
 
 	int outOfCorePointCount( void );

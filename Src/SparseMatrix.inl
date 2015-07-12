@@ -37,7 +37,7 @@ DAMAGE.
 ///////////////////////////////////////
 
 template< class T >
-SparseMatrix< T >::SparseMatrix( void )
+void SparseMatrix< T >::_init( void )
 {
 	_contiguous = false;
 	_maxEntriesPerRow = 0;
@@ -46,12 +46,15 @@ SparseMatrix< T >::SparseMatrix( void )
 	m_ppElements = NullPointer< Pointer( MatrixEntry< T > ) >( );
 }
 
-template< class T > SparseMatrix< T >::SparseMatrix( int rows                        ) : SparseMatrix< T >() { Resize( rows ); }
-template< class T > SparseMatrix< T >::SparseMatrix( int rows , int maxEntriesPerRow ) : SparseMatrix< T >() { Resize( rows , maxEntriesPerRow ); }
+template< class T > SparseMatrix< T >::SparseMatrix( void ){  _init(); }
+
+template< class T > SparseMatrix< T >::SparseMatrix( int rows                        ){ _init() , Resize( rows ); }
+template< class T > SparseMatrix< T >::SparseMatrix( int rows , int maxEntriesPerRow ){ _init() , Resize( rows , maxEntriesPerRow ); }
 
 template< class T >
-SparseMatrix< T >::SparseMatrix( const SparseMatrix& M ) : SparseMatrix< T >()
+SparseMatrix< T >::SparseMatrix( const SparseMatrix& M )
 {
+	_init();
 	if( M._contiguous ) Resize( M.rows , M._maxEntriesPerRow );
 	else                Resize( M.rows );
 	for( int i=0 ; i<rows ; i++ )

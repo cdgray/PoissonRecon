@@ -5,10 +5,12 @@
 # * Last Updated:	$LastChangedDate: 2006-11-10 15:03:28 -0500 (Fri, 10 Nov 2006) $
 # ********************************************************************************************/
 
-TARGET=PoissonRecon
-SOURCE=CmdLineParser.cpp Factor.cpp Geometry.cpp MarchingCubes.cpp ply.cpp plyfile.cpp Time.cpp MultiGridOctest.cpp
+PR_TARGET=PoissonRecon
+ST_TARGET=SurfaceTrimmer
+PR_SOURCE=CmdLineParser.cpp Factor.cpp Geometry.cpp MarchingCubes.cpp PlyFile.cpp Time.cpp PoissonRecon.cpp
+ST_SOURCE=CmdLineParser.cpp Factor.cpp Geometry.cpp MarchingCubes.cpp PlyFile.cpp Time.cpp SurfaceTrimmer.cpp
 
-CFLAGS += -fpermissive -fopenmp
+CFLAGS += -fpermissive -fopenmp -Wno-deprecated
 LFLAGS += -lgomp
 
 CFLAGS_DEBUG = -DDEBUG -g3
@@ -24,22 +26,29 @@ INCLUDE = /usr/include/
 CC=gcc
 CXX=g++
 
-OBJECTS=$(addprefix $(BIN), $(addsuffix .o, $(basename $(SOURCE))))
+PR_OBJECTS=$(addprefix $(BIN), $(addsuffix .o, $(basename $(PR_SOURCE))))
+ST_OBJECTS=$(addprefix $(BIN), $(addsuffix .o, $(basename $(ST_SOURCE))))
 
 all: CFLAGS += $(CFLAGS_DEBUG)
 all: LFLAGS += $(LFLAGS_DEBUG)
-all: $(BIN)$(TARGET)
+all: $(BIN)$(PR_TARGET)
+all: $(BIN)$(ST_TARGET)
 
 release: CFLAGS += $(CFLAGS_RELEASE)
 release: LFLAGS += $(LFLAGS_RELEASE)
-release: $(BIN)$(TARGET)
+release: $(BIN)$(PR_TARGET)
+release: $(BIN)$(ST_TARGET)
 
 clean:
-	rm -f $(BIN)$(TARGET)
-	rm -f $(OBJECTS)
+	rm -f $(BIN)$(PR_TARGET)
+	rm -f $(BIN)$(ST_TARGET)
+	rm -f $(PR_OBJECTS)
 
-$(BIN)$(TARGET): $(OBJECTS)
-	$(CXX) -o $@ $(OBJECTS) $(LFLAGS)
+$(BIN)$(PR_TARGET): $(PR_OBJECTS)
+	$(CXX) -o $@ $(PR_OBJECTS) $(LFLAGS)
+
+$(BIN)$(ST_TARGET): $(ST_OBJECTS)
+	$(CXX) -o $@ $(ST_OBJECTS) $(LFLAGS)
 
 $(BIN)%.o: $(SRC)%.c
 	$(CC) -c -o $@ $(CFLAGS) -I$(INCLUDE) $<
