@@ -29,18 +29,19 @@ DAMAGE.
 #ifndef __VECTOR_HPP
 #define __VECTOR_HPP
 
+
 #define Assert assert
 #include <assert.h>
 
-template<class T>
+template< class T >
 class Vector
 {
 public:
-	Vector();
+	Vector( void );
 	Vector( const Vector<T>& V );
 	Vector( size_t N );
 	Vector( size_t N, T* pV );
-	~Vector();
+	~Vector( void );
 
 	const T& operator () (size_t i) const;
 	T& operator () (size_t i);
@@ -57,15 +58,16 @@ public:
 	Vector operator - (const Vector& V) const;
 	Vector operator + (const Vector& V) const;
 
-	Vector& operator *= (const T& A);
-	Vector& operator /= (const T& A);
-	Vector& operator += (const Vector& V);
-	Vector& operator -= (const Vector& V);
+	Vector& operator *= ( const T& A );
+	Vector& operator /= ( const T& A );
+	Vector& operator += ( const Vector& V );
+	Vector& operator -= ( const Vector& V );
 
-	Vector& AddScaled(const Vector& V,const T& scale);
-	Vector& SubtractScaled(const Vector& V,const T& scale);
-	static void Add(const Vector& V1,const T& scale1,const Vector& V2,const T& scale2,Vector& Out);
-	static void Add(const Vector& V1,const T& scale1,const Vector& V2,Vector& Out);
+	Vector& Add( const Vector* V , int count );
+	Vector& AddScaled( const Vector& V , const T& scale );
+	Vector& SubtractScaled( const Vector& V , const T& scale );
+	static void Add( const Vector& V1 , const T& scale1 , const Vector& V2 , const T& scale2 , Vector& Out );
+	static void Add( const Vector& V1 , const T& scale1 , const Vector& V2 , Vector& Out );
 
 	Vector operator - () const;
 

@@ -403,13 +403,14 @@ template<class T>
 template<class T2>
 Vector<T2> SparseSymmetricMatrix<T>::Multiply( const Vector<T2>& V ) const
 {
-	Vector<T2> R( rows );
-	
-	for(int i=0; i<rows; i++){
-		for(int ii=0;ii<rowSizes[i];ii++){
-			int j=m_ppElements[i][ii].N;
-			R(i)+=m_ppElements[i][ii].Value * V.m_pV[j];
-			R(j)+=m_ppElements[i][ii].Value * V.m_pV[i];
+	Vector<T2> R( SparseMatrix< T >::rows );
+
+	for(int i=0; i<SparseMatrix< T >::rows; i++){
+		for(int ii=0;ii<SparseMatrix< T >::rowSizes[i];ii++)
+		{
+			int j=SparseMatrix< T >::m_ppElements[i][ii].N;
+			R(i)+=SparseMatrix< T >::m_ppElements[i][ii].Value * V.m_pV[j];
+			R(j)+=SparseMatrix< T >::m_ppElements[i][ii].Value * V.m_pV[i];
 		}
 	}
 	return R;
@@ -425,13 +426,13 @@ void SparseSymmetricMatrix<T>::Multiply( const Vector<T2>& In , Vector<T2>& Out 
 	T2 dcTerm = T2( 0 );
 	if( addDCTerm )
 	{
-		for( int i=0 ; i<rows ; i++ ) dcTerm += in[i];
-		dcTerm /= rows;
+		for( int i=0 ; i<SparseMatrix< T >::rows ; i++ ) dcTerm += in[i];
+		dcTerm /= SparseMatrix< T >::rows;
 	}
-	for( int i=0 ; i<this->rows ; i++ )
+	for( int i=0 ; i<SparseMatrix< T >::rows ; i++ )
 	{
-		const MatrixEntry<T>* temp = m_ppElements[i];
-		const MatrixEntry<T>* end = temp + rowSizes[i];
+		const MatrixEntry<T>* temp = SparseMatrix< T >::m_ppElements[i];
+		const MatrixEntry<T>* end = temp + SparseMatrix< T >::rowSizes[i];
 		const T2& in_i_ = in[i];
 		T2 out_i = T2(0);
 		for( ; temp!=end ; temp++ )
@@ -443,7 +444,7 @@ void SparseSymmetricMatrix<T>::Multiply( const Vector<T2>& In , Vector<T2>& Out 
 		}
 		out[i] += out_i;
 	}
-	if( addDCTerm ) for( int i=0 ; i<rows ; i++ ) out[i] += dcTerm;
+	if( addDCTerm ) for( int i=0 ; i<SparseMatrix< T >::rows ; i++ ) out[i] += dcTerm;
 }
 template<class T>
 template<class T2>
@@ -460,11 +461,11 @@ void SparseSymmetricMatrix<T>::Multiply( const Vector<T2>& In , Vector<T2>& Out 
 		{
 			T2* out = OutScratch[t];
 			memset( out , 0 , sizeof( T2 ) * dim );
-			for( int i=(rows*t)/threads ; i<(rows*(t+1))/threads ; i++ )
+			for( int i=(SparseMatrix< T >::rows*t)/threads ; i<(SparseMatrix< T >::rows*(t+1))/threads ; i++ )
 			{
 				const T2& in_i_ = in[i];
 				T2& out_i_ = out[i];
-				for( const MatrixEntry< T > *temp = m_ppElements[i] , *end = temp+rowSizes[i] ; temp!=end ; temp++ )
+				for( const MatrixEntry< T > *temp = SparseMatrix< T >::m_ppElements[i] , *end = temp+SparseMatrix< T >::rowSizes[i] ; temp!=end ; temp++ )
 				{
 					int j = temp->N;
 					T2 v = temp->Value;
@@ -492,17 +493,18 @@ void SparseSymmetricMatrix<T>::Multiply( const Vector<T2>& In , Vector<T2>& Out 
 		{
 			T2* out = OutScratch[t];
 			memset( out , 0 , sizeof( T2 ) * dim );
-			for( int i=(rows*t)/threads ; i<(rows*(t+1))/threads ; i++ )
+			for( int i=(SparseMatrix< T >::rows*t)/threads ; i<(SparseMatrix< T >::rows*(t+1))/threads ; i++ )
 			{
-				const T2& in_i_ = in[i];
-				T2& out_i_ = out[i];
-				for( const MatrixEntry< T > *temp = m_ppElements[i] , *end = temp+rowSizes[i] ; temp!=end ; temp++ )
+				T2 in_i_ = in[i];
+				T2 out_i_ = T2();
+				for( const MatrixEntry< T > *temp = SparseMatrix< T >::m_ppElements[i] , *end = temp+SparseMatrix< T >::rowSizes[i] ; temp!=end ; temp++ )
 				{
 					int j = temp->N;
 					T2 v = temp->Value;
 					out_i_ += v * in[j];
 					out[j] += v * in_i_;
 				}
+				out[i] += out_i_;
 			}
 		}
 		dim = int( Out.Dimensions() );
@@ -532,8 +534,8 @@ void SparseSymmetricMatrix<T>::Multiply( const Vector<T2>& In , Vector<T2>& Out 
 		T2* out = OutScratch[t];
 		for( int i=bounds[t] ; i<bounds[t+1] ; i++ )
 		{
-			const MatrixEntry<T>* temp = m_ppElements[i];
-			const MatrixEntry<T>* end = temp + rowSizes[i];
+			const MatrixEntry<T>* temp = SparseMatrix< T >::m_ppElements[i];
+			const MatrixEntry<T>* end = temp + SparseMatrix< T >::rowSizes[i];
 			const T2& in_i_ = in[i];
 			T2& out_i_ = out[i];
 			for(  ; temp!=end ; temp++ )
@@ -944,10 +946,10 @@ template< class T >
 template< class T2 >
 void SparseSymmetricMatrix< T >::getDiagonal( Vector< T2 >& diagonal ) const
 {
-	diagonal.Resize( rows );
-	for( int i=0 ; i<rows ; i++ )
+	diagonal.Resize( SparseMatrix< T >::rows );
+	for( int i=0 ; i<SparseMatrix< T >::rows ; i++ )
 	{
 		diagonal[i] = 0.;
-		for( int j=0 ; j<rowSizes[i] ; j++ ) if( m_ppElements[i][j].N==i ) diagonal[i] += m_ppElements[i][j].Value * 2;
+		for( int j=0 ; j<SparseMatrix< T >::rowSizes[i] ; j++ ) if( SparseMatrix< T >::m_ppElements[i][j].N==i ) diagonal[i] += SparseMatrix< T >::m_ppElements[i][j].Value * 2;
 	}
 }

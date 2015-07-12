@@ -25,7 +25,7 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
-#include "Ply.h"
+#include "ply.h"
 
 template< class Real >
 ASCIIPointStream< Real >::ASCIIPointStream( const char* fileName )
@@ -105,7 +105,7 @@ public:
 
 	operator Point3D<Real>& ()					{return point;}
 	operator const Point3D<Real>& () const		{return point;}
-	template< class Real > operator Point3D< Real > ( ) const { return Point3D< Real >( point ); }
+	template< class Real2 > operator Point3D< Real2 > ( ) const { return Point3D< Real2 >( point ); }
 	PlyOrientedVertex(void)						{point.coords[0]=point.coords[1]=point.coords[2]=normal.coords[0]=normal.coords[1]=normal.coords[2]=0;}
 	PlyOrientedVertex(const Point3D<Real>& p)	{point=p;}
 };

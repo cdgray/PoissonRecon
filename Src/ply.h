@@ -220,8 +220,11 @@ extern int equal_strings(char *, char *);
 #include "Geometry.h"
 #include <vector>
 
-int PlyWritePolygons( char* fileName , CoredMeshData*  mesh , int file_type , const Point3D<float>& translate , float scale , char** comments=NULL , int commentNum=0 );
-int PlyWritePolygons( char* fileName , CoredMeshData2* mesh , int file_type , const Point3D<float>& translate , float scale , char** comments=NULL , int commentNum=0 );
+int PlyWritePolygons( char* fileName , CoredMeshData*  mesh , int file_type , const Point3D<float>& translate , float scale , char** comments=NULL , int commentNum=0 , XForm4x4< float > xForm=XForm4x4< float >::Identity() );
+int PlyWritePolygons( char* fileName , CoredMeshData2* mesh , int file_type , const Point3D<float>& translate , float scale , char** comments=NULL , int commentNum=0 , XForm4x4< float > xForm=XForm4x4< float >::Identity() );
+
+int PlyWritePolygons( char* fileName , CoredMeshData*  mesh , int file_type , char** comments=NULL , int commentNum=0 , XForm4x4< float > xForm=XForm4x4< float >::Identity() );
+int PlyWritePolygons( char* fileName , CoredMeshData2* mesh , int file_type , char** comments=NULL , int commentNum=0 , XForm4x4< float > xForm=XForm4x4< float >::Identity() );
 inline int PlyDefaultFileType(void){return PLY_ASCII;}
 
 #endif /* !__PLY_H__ */

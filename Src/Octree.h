@@ -87,7 +87,7 @@ public:
 
 	OctNode(void);
 	~OctNode(void);
-	int initChildren(void);
+	int initChildren( void );
 
 	void depthAndOffset(int& depth,int offset[DIMENSION]) const; 
 	int depth(void) const;

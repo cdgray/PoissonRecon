@@ -32,64 +32,6 @@ DAMAGE.
 
 #include "PPolynomial.h"
 
-template< int Degree , class Real >
-class BSplineData
-{
-	bool useDotRatios;
-	bool reflectBoundary;
-public:
-	struct BSplineComponents
-	{
-		Polynomial< Degree > polys[Degree+1];
-		Polynomial< Degree >& operator[] ( int idx ) { return polys[idx]; }
-		const Polynomial< Degree >& operator[] ( int idx ) const { return polys[idx]; }
-		void printnl( void ) const  { for( int d=0 ; d<=Degree ; d++ ) polys[d].printnl(); }
-		BSplineComponents scale( double s ) const { BSplineComponents b ; for( int d=0 ; d<=Degree ; d++ ) b[d] = polys[d].scale(s) ; return b; }
-		BSplineComponents shift( double s ) const { BSplineComponents b ; for( int d=0 ; d<=Degree ; d++ ) b[d] = polys[d].shift(s) ; return b; }
-	};
-	const static int  VV_DOT_FLAG = 1;
-	const static int  DV_DOT_FLAG = 2;
-	const static int  DD_DOT_FLAG = 4;
-	const static int   VALUE_FLAG = 1;
-	const static int D_VALUE_FLAG = 2;
-
-	int depth , functionCount , sampleCount;
-	Real *vvDotTable , *dvDotTable , *ddDotTable;
-	Real *valueTables , *dValueTables;
-	PPolynomial< Degree   >  baseFunction ,  leftBaseFunction ,  rightBaseFunction;
-	PPolynomial< Degree-1 > dBaseFunction , dLeftBaseFunction , dRightBaseFunction;
-	BSplineComponents baseBSpline, leftBSpline , rightBSpline;
-	PPolynomial<Degree>* baseFunctions;
-	BSplineComponents* baseBSplines;
-
-	BSplineData(void);
-	~BSplineData(void);
-
-	virtual void   setDotTables( int flags );
-	virtual void clearDotTables( int flags );
-
-	virtual void   setValueTables( int flags,double smooth=0);
-	virtual void   setValueTables( int flags,double valueSmooth,double normalSmooth);
-	virtual void clearValueTables(void);
-
-	void setSampleSpan( int idx , int& start , int& end , double smooth=0 ) const;
-
-	/********************************************************
-	 * Sets the translates and scales of the basis function
-	 * up to the prescribed depth
-	 * <maxDepth> the maximum depth
-	 * <useDotRatios> specifies if dot-products of derivatives
-	 * should be pre-divided by function integrals
-	 * <reflectBoundary> spcifies if function space should be
-	 * forced to be reflectively symmetric across the boundary
-	 ********************************************************/
-	void set( int maxDepth , bool useDotRatios=true , bool reflectBoundary=false );
-
-	inline int Index( int i1 , int i2 ) const;
-	static inline int SymmetricIndex( int i1 , int i2 );
-	static inline int SymmetricIndex( int i1 , int i2 , int& index  );
-};
-
 template< int Degree >
 struct BSplineElementCoefficients
 {
@@ -115,7 +57,7 @@ public:
 	int denominator;
 
 	BSplineElements( void ) { denominator = 1; }
-	BSplineElements( int res , int offset , int boundary=NONE );
+	BSplineElements( int res , int offset , int boundary=NONE , int inset=0 );
 
 	void upSample( BSplineElements& high ) const;
 	void differentiate( BSplineElements< Degree-1 >& d ) const;
@@ -130,6 +72,65 @@ public:
 		}
 	}
 };
+
+template< int Degree , class Real >
+class BSplineData
+{
+	bool useDotRatios;
+	int boundaryType;
+public:
+	struct BSplineComponents
+	{
+		Polynomial< Degree > polys[Degree+1];
+		Polynomial< Degree >& operator[] ( int idx ) { return polys[idx]; }
+		const Polynomial< Degree >& operator[] ( int idx ) const { return polys[idx]; }
+		void printnl( void ) const  { for( int d=0 ; d<=Degree ; d++ ) polys[d].printnl(); }
+		BSplineComponents scale( double s ) const { BSplineComponents b ; for( int d=0 ; d<=Degree ; d++ ) b[d] = polys[d].scale(s) ; return b; }
+		BSplineComponents shift( double s ) const { BSplineComponents b ; for( int d=0 ; d<=Degree ; d++ ) b[d] = polys[d].shift(s) ; return b; }
+	};
+	const static int  VV_DOT_FLAG = 1;
+	const static int  DV_DOT_FLAG = 2;
+	const static int  DD_DOT_FLAG = 4;
+	const static int   VALUE_FLAG = 1;
+	const static int D_VALUE_FLAG = 2;
+
+	int depth , functionCount , sampleCount;
+	Real *vvDotTable , *dvDotTable , *ddDotTable;
+	Real *valueTables , *dValueTables;
+	PPolynomial< Degree   >  baseFunction ,  leftBaseFunction ,  rightBaseFunction ,  leftRightBaseFunction;
+	PPolynomial< Degree-1 > dBaseFunction , dLeftBaseFunction , dRightBaseFunction , dLeftRightBaseFunction;
+	BSplineComponents baseBSpline , leftBSpline , rightBSpline , leftRightBSpline;
+	PPolynomial<Degree>* baseFunctions;
+	BSplineComponents* baseBSplines;
+
+	BSplineData(void);
+	~BSplineData(void);
+
+	virtual void   setDotTables( int flags , bool inset=false );
+	virtual void clearDotTables( int flags );
+
+	virtual void   setValueTables( int flags , double smooth=0 );
+	virtual void   setValueTables( int flags , double valueSmooth , double normalSmooth );
+	virtual void clearValueTables( void );
+
+	void setSampleSpan( int idx , int& start , int& end , double smooth=0 ) const;
+
+	/********************************************************
+	 * Sets the translates and scales of the basis function
+	 * up to the prescribed depth
+	 * <maxDepth> the maximum depth
+	 * <useDotRatios> specifies if dot-products of derivatives
+	 * should be pre-divided by function integrals
+	 * <reflectBoundary> spcifies if function space should be
+	 * forced to be reflectively symmetric across the boundary
+	 ********************************************************/
+	void set( int maxDepth , bool useDotRatios=true , int boundaryType=BSplineElements< Degree >::NONE );
+
+	inline int Index( int i1 , int i2 ) const;
+	static inline int SymmetricIndex( int i1 , int i2 );
+	static inline int SymmetricIndex( int i1 , int i2 , int& index  );
+};
+
 template< int Degree1 , int Degree2 > void SetBSplineElementIntegrals( double integrals[Degree1+1][Degree2+1] );
 
 #include "BSplineData.inl"

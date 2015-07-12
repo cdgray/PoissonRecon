@@ -38,12 +38,12 @@ Vector<T>::Vector()
 	m_N = 0;
 	m_pV = 0;
 }
-template<class T>
-Vector<T>::Vector( const Vector<T>& V )
+template< class T >
+Vector< T >::Vector( const Vector<T>& V )
 {
 	m_N = 0;
 	m_pV = 0;
-  Resize(V.m_N);
+	Resize(V.m_N);
 	memcpy( m_pV, V.m_pV, m_N*sizeof(T) );
 }
 template<class T>
@@ -64,6 +64,7 @@ void Vector<T>::Resize( size_t N )
 	}
 	memset( m_pV, 0, N*sizeof(T) );
 }
+
 template<class T>
 Vector<T>::Vector( size_t N, T* pV )
 {
@@ -86,7 +87,6 @@ void Vector<T>::SetZero(void){for (size_t i=0; i<m_N; i++){m_pV[i] = T(0);}}
 template<class T>
 const T& Vector<T>::operator () (size_t i) const
 {
-	Assert( i < m_N );
 	return m_pV[i];
 }
 template<class T>
@@ -108,102 +108,97 @@ template<class T>
 Vector<T> Vector<T>::operator * (const T& A) const
 {
 	Vector V(*this);
-	for (size_t i=0; i<m_N; i++)
-		V.m_pV[i] *= A;
+	for (size_t i=0; i<m_N; i++) V.m_pV[i] *= A;
 	return V;
 }
 template<class T>
 Vector<T>& Vector<T>::operator *= (const T& A)
 {
-	for (size_t i=0; i<m_N; i++)
-		m_pV[i] *= A;
+	for (size_t i=0; i<m_N; i++) m_pV[i] *= A;
 	return *this;
 }
 template<class T>
 Vector<T> Vector<T>::operator / (const T& A) const
 {
 	Vector V(*this);
-	for (size_t i=0; i<m_N; i++)
-		V.m_pV[i] /= A;
+	for (size_t i=0; i<m_N; i++) V.m_pV[i] /= A;
 	return V;
 }
 template<class T>
 Vector<T>& Vector<T>::operator /= (const T& A)
 {
-	for (size_t i=0; i<m_N; i++)
-		m_pV[i] /= A;
+	for (size_t i=0; i<m_N; i++) m_pV[i] /= A;
 	return *this;
 }
 template<class T>
 Vector<T> Vector<T>::operator + (const Vector<T>& V0) const
 {
 	Vector<T> V(m_N);
-	for (size_t i=0; i<m_N; i++)
-		V.m_pV[i] = m_pV[i] + V0.m_pV[i];
-
+	for (size_t i=0; i<m_N; i++) V.m_pV[i] = m_pV[i] + V0.m_pV[i];
 	return V;
-}
-template<class T>
-Vector<T>& Vector<T>::AddScaled(const Vector<T>& V,const T& scale)
-{
-	for (size_t i=0; i<m_N; i++)
-		m_pV[i] += V.m_pV[i]*scale;
-
-	return *this;
-}
-template<class T>
-Vector<T>& Vector<T>::SubtractScaled(const Vector<T>& V,const T& scale)
-{
-	for (size_t i=0; i<m_N; i++)
-		m_pV[i] -= V.m_pV[i]*scale;
-
-	return *this;
-}
-template<class T>
-void Vector<T>::Add(const Vector<T>& V1,const T& scale1,const Vector<T>& V2,const T& scale2,Vector<T>& Out){
-	for (size_t i=0; i<V1.m_N; i++)
-		Out.m_pV[i]=V1.m_pV[i]*scale1+V2.m_pV[i]*scale2;
-}
-template<class T>
-void Vector<T>::Add(const Vector<T>& V1,const T& scale1,const Vector<T>& V2,Vector<T>& Out){
-	for (size_t i=0; i<V1.m_N; i++)
-		Out.m_pV[i]=V1.m_pV[i]*scale1+V2.m_pV[i];
 }
 template<class T>
 Vector<T>& Vector<T>::operator += (const Vector<T>& V)
 {
-	for (size_t i=0; i<m_N; i++)
-		m_pV[i] += V.m_pV[i];
-
+	for ( size_t i=0 ; i<m_N ; i++ ) m_pV[i] += V.m_pV[i];
 	return *this;
 }
 template<class T>
 Vector<T> Vector<T>::operator - (const Vector<T>& V0) const
 {
 	Vector<T> V(m_N);
-	for (size_t i=0; i<m_N; i++)
-		V.m_pV[i] = m_pV[i] - V0.m_pV[i];
-
-	return V;
-}
-template<class T>
-Vector<T> Vector<T>::operator - (void) const
-{
-	Vector<T> V(m_N);
-
-	for (size_t i=0; i<m_N; i++)
-		V.m_pV[i] = -m_pV[i];
-
+	for (size_t i=0; i<m_N; i++) V.m_pV[i] = m_pV[i] - V0.m_pV[i];
 	return V;
 }
 template<class T>
 Vector<T>& Vector<T>::operator -= (const Vector<T>& V)
 {
-	for (size_t i=0; i<m_N; i++)
-		m_pV[i] -= V.m_pV[i];
-
+	for (size_t i=0; i<m_N; i++) m_pV[i] -= V.m_pV[i];
 	return *this;
 }
+
+template<class T>
+Vector<T> Vector<T>::operator - (void) const
+{
+	Vector<T> V(m_N);
+	for (size_t i=0; i<m_N; i++) V.m_pV[i] = -m_pV[i];
+	return V;
+}
+
+
+
+
+template< class T >
+Vector< T >& Vector< T >::Add( const Vector< T >* V , int count )
+{
+	for( int c=0 ; c<count ; c++ ) for( size_t i=0 ; i<m_N ; i++ ) m_pV[i] += V[c].m_pV[i];
+	return *this;
+}
+
+template< class T >
+Vector< T >& Vector< T >::AddScaled( const Vector<T>& V , const T& scale )
+{
+	for (size_t i=0; i<m_N; i++) m_pV[i] += V.m_pV[i]*scale;
+	return *this;
+}
+template<class T>
+Vector<T>& Vector<T>::SubtractScaled(const Vector<T>& V,const T& scale)
+{
+	for (size_t i=0; i<m_N; i++) m_pV[i] -= V.m_pV[i]*scale;
+	return *this;
+}
+
+template<class T>
+void Vector<T>::Add( const Vector<T>& V1 , const T& scale1 , const Vector<T>& V2 , const T& scale2 , Vector<T>& Out )
+{
+	for( size_t i=0 ; i<V1.m_N ; i++ ) Out.m_pV[i]=V1.m_pV[i]*scale1+V2.m_pV[i]*scale2;
+}
+template<class T>
+void Vector<T>::Add(const Vector<T>& V1,const T& scale1,const Vector<T>& V2,Vector<T>& Out)
+{
+	for( size_t i=0 ; i<V1.m_N ; i++ ) Out.m_pV[i]=V1.m_pV[i]*scale1+V2.m_pV[i];
+}
+
 template<class T>
 T Vector<T>::Norm( size_t Ln ) const
 {
@@ -231,9 +226,7 @@ template<class T>
 T Vector<T>::Dot( const Vector<T>& V ) const
 {
 	T V0 = T();
-	for (size_t i=0; i<m_N; i++)
-		V0 += m_pV[i]*V.m_pV[i];
-
+	for( size_t i=0 ; i<m_N ; i++ ) V0 += m_pV[i]*V.m_pV[i];
 	return V0;
 }
 

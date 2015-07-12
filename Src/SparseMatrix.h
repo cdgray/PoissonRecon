@@ -35,8 +35,9 @@ DAMAGE.
 template <class T>
 struct MatrixEntry
 {
-	MatrixEntry( void )		{ N =-1; Value = 0; }
-	MatrixEntry( int i )	{ N = i; Value = 0; }
+	MatrixEntry( void )		    { N =-1; Value = 0; }
+	MatrixEntry( int i )	    { N = i; Value = 0; }
+	MatrixEntry( int i , T v )	{ N = i; Value = v; }
 	int N;
 	T Value;
 };
@@ -102,6 +103,7 @@ public:
 	bool read( FILE* fp );
 	bool read( const char* fileName );
 };
+
 
 template< class T2 >
 struct MapReduceVector

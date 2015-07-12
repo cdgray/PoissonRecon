@@ -78,35 +78,33 @@ void OctNode<NodeData,Real>::setFullDepth(int maxDepth){
 }
 
 template <class NodeData,class Real>
-int OctNode<NodeData,Real>::initChildren(void){
-	int i,j,k;
-
-	if(UseAlloc){children=Allocator.newElements(8);}
-	else{
-		if(children){delete[] children;}
-		children=NULL;
-		children=new OctNode[Cube::CORNERS];
+int OctNode<NodeData,Real>::initChildren( void )
+{
+	if( UseAlloc ) children=Allocator.newElements(8);
+	else
+	{
+		if( children ) delete[] children;
+		children = NULL;
+		children = new OctNode[Cube::CORNERS];
 	}
-	if(!children){
+	if( !children )
+	{
 		fprintf(stderr,"Failed to initialize children in OctNode::initChildren\n");
 		exit(0);
 		return 0;
 	}
-	int d,off[3];
-	depthAndOffset(d,off);
-	for(i=0;i<2;i++){
-		for(j=0;j<2;j++){
-			for(k=0;k<2;k++){
-				int idx=Cube::CornerIndex(i,j,k);
-				children[idx].parent=this;
-				children[idx].children=NULL;
-				int off2[3];
-				off2[0]=(off[0]<<1)+i;
-				off2[1]=(off[1]<<1)+j;
-				off2[2]=(off[2]<<1)+k;
-				Index(d+1,off2,children[idx].d,children[idx].off);
-			}
-		}
+	int d , off[3];
+	depthAndOffset( d , off );
+	for( int i=0 ; i<2 ; i++ ) for( int j=0 ; j<2 ; j++ ) for( int k=0 ; k<2 ; k++ )
+	{
+		int idx=Cube::CornerIndex(i,j,k);
+		children[idx].parent = this;
+		children[idx].children = NULL;
+		int off2[3];
+		off2[0] = (off[0]<<1)+i;
+		off2[1] = (off[1]<<1)+j;
+		off2[2] = (off[2]<<1)+k;
+		Index( d+1 , off2 , children[idx].d , children[idx].off );
 	}
 	return 1;
 }
@@ -1260,8 +1258,8 @@ typename OctNode<NodeData,Real>::Neighbors3& OctNode<NodeData,Real>::NeighborKey
 			// Set the neighbors from across the faces
 			i=x1<<1;
 			if(temp.neighbors[i][1][1]){
-				if(!temp.neighbors[i][1][1]->children){temp.neighbors[i][1][1]->initChildren();}
-				for(j=0;j<2;j++){for(k=0;k<2;k++){neighbors[d].neighbors[i][y2+j][z2+k]=&temp.neighbors[i][1][1]->children[Cube::CornerIndex(x2,j,k)];}}
+				if(!temp.neighbors[i][1][1]->children) temp.neighbors[i][1][1]->initChildren();
+				for(j=0;j<2;j++) for(k=0;k<2;k++) neighbors[d].neighbors[i][y2+j][z2+k]=&temp.neighbors[i][1][1]->children[Cube::CornerIndex(x2,j,k)];
 			}
 			j=y1<<1;
 			if(temp.neighbors[1][j][1]){

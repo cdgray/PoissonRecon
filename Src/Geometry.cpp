@@ -26,6 +26,8 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 #include "Geometry.h"
+#include <stdio.h>
+#include <string.h>
 
 ///////////////////
 // CoredMeshData //
@@ -75,9 +77,152 @@ int CoredVectorMeshData::nextPolygon( std::vector< CoredVertexIndex >& vertices 
 int CoredVectorMeshData::outOfCorePointCount(void){return int(oocPoints.size());}
 int CoredVectorMeshData::polygonCount( void ) { return int( polygons.size() ); }
 
-/////////////////////////
-// CoredVectorMeshData //
-/////////////////////////
+///////////////////////////
+// BufferedReadWriteFile //
+///////////////////////////
+BufferedReadWriteFile::BufferedReadWriteFile( char* fileName , int bufferSize )
+{
+	_bufferIndex = 0;
+	_bufferSize = bufferSize;
+	if( fileName ) strcpy( _fileName , fileName ) , tempFile = false;
+#ifdef _WIN32
+	else strcpy( _fileName , _tempnam( "." , "foo" ) ) , tempFile = true;
+#else // !_WIN32
+	else strcpy( _fileName , tempnam( "." , "foo" ) ) , tempFile = true;
+#endif // _WIN32
+	_fp = fopen( _fileName , "w+b" );
+	if( !_fp ) fprintf( stderr , "[ERROR] Failed to open file: %s\n" , _fileName ) , exit( 0 );
+	_buffer = (char*) malloc( _bufferSize );
+}
+BufferedReadWriteFile::~BufferedReadWriteFile( void )
+{
+	free( _buffer );
+	fclose( _fp );
+	if( tempFile ) remove( _fileName );
+}
+void BufferedReadWriteFile::reset( void )
+{
+	if( _bufferIndex ) fwrite( _buffer , 1 , _bufferIndex , _fp );
+	_bufferIndex = 0;
+	fseek( _fp , 0 , SEEK_SET );
+	_bufferIndex = 0;
+	_bufferSize = fread( _buffer , 1 , _bufferSize , _fp );
+}
+bool BufferedReadWriteFile::write( const void* data , size_t size )
+{
+	if( !size ) return true;
+	char* _data = (char*) data;
+	size_t sz = _bufferSize - _bufferIndex;
+	while( sz<=size )
+	{
+		memcpy( _buffer+_bufferIndex , _data , sz );
+		fwrite( _buffer , 1 , _bufferSize , _fp );
+		_data += sz;
+		size -= sz;
+		_bufferIndex = 0;
+		sz = _bufferSize;
+	}
+	if( size )
+	{
+		memcpy( _buffer+_bufferIndex , _data , size );
+		_bufferIndex += size;
+	}
+	return true;
+}
+bool BufferedReadWriteFile::read( void* data , size_t size )
+{
+	if( !size ) return true;
+	char *_data = (char*) data;
+	size_t sz = _bufferSize - _bufferIndex;
+	while( sz<=size )
+	{
+		if( size && !_bufferSize ) return false;
+		memcpy( _data , _buffer+_bufferIndex , sz );
+		_bufferSize = fread( _buffer , 1 , _bufferSize , _fp );
+		_data += sz;
+		size -= sz;
+		_bufferIndex = 0;
+		if( !size ) return true;
+		sz = _bufferSize;
+	}
+	if( size )
+	{
+		if( !_bufferSize ) return false;
+		memcpy( _data , _buffer+_bufferIndex , size );
+		_bufferIndex += size;
+	}
+	return true;
+}
+
+
+///////////////////////
+// CoredFileMeshData //
+///////////////////////
+CoredFileMeshData::CoredFileMeshData( void )
+{
+	oocPoints = polygons = 0;
+	
+	oocPointFile = new BufferedReadWriteFile();
+	polygonFile = new BufferedReadWriteFile();
+}
+CoredFileMeshData::~CoredFileMeshData( void )
+{
+	delete oocPointFile;
+	delete polygonFile;
+}
+void CoredFileMeshData::resetIterator ( void )
+{
+	oocPointFile->reset();
+	polygonFile->reset();
+}
+int CoredFileMeshData::addOutOfCorePoint( const Point3D< float >& p )
+{
+	oocPointFile->write( &p , sizeof( Point3D< float > ) );
+	oocPoints++;
+	return oocPoints-1;
+}
+int CoredFileMeshData::addPolygon( const std::vector< CoredVertexIndex >& vertices )
+{
+	int pSize = int( vertices.size() );
+	std::vector< int > polygon( pSize );
+	for( int i=0 ; i<pSize ; i++ ) 
+		if( vertices[i].inCore ) polygon[i] =  vertices[i].idx;
+		else                     polygon[i] = -vertices[i].idx-1;
+
+	polygonFile->write( &pSize , sizeof(int) );
+	polygonFile->write( &polygon[0] , sizeof(int)*pSize );
+	polygons++;
+	return polygons-1;
+}
+int CoredFileMeshData::nextOutOfCorePoint( Point3D< float >& p )
+{
+	if( oocPointFile->read( &p , sizeof( Point3D< float > ) ) ) return 1;
+	else return 0;
+}
+int CoredFileMeshData::nextPolygon( std::vector< CoredVertexIndex >& vertices )
+{
+	int pSize;
+	if( polygonFile->read( &pSize , sizeof(int) ) )
+	{
+		std::vector< int > polygon( pSize );
+		if( polygonFile->read( &polygon[0] , sizeof(int)*pSize ) )
+		{
+			vertices.resize( pSize );
+			for( int i=0 ; i<int(polygon.size()) ; i++ )
+				if( polygon[i]<0 ) vertices[i].idx = -polygon[i]-1 , vertices[i].inCore = false;
+				else               vertices[i].idx =  polygon[i]   , vertices[i].inCore = true;
+			return 1;
+		}
+		return 0;
+	}
+	else return 0;
+}
+int CoredFileMeshData::outOfCorePointCount( void ){ return oocPoints; }
+int CoredFileMeshData::polygonCount( void ) { return polygons; }
+
+//////////////////////////
+// CoredVectorMeshData2 //
+//////////////////////////
 CoredVectorMeshData2::CoredVectorMeshData2( void ) { oocPointIndex = polygonIndex = 0; }
 void CoredVectorMeshData2::resetIterator ( void ) { oocPointIndex = polygonIndex = 0; }
 int CoredVectorMeshData2::addOutOfCorePoint( const CoredMeshData2::Vertex& v )

@@ -40,7 +40,7 @@ DAMAGE.
 #include "SparseMatrix.h"
 #include "CmdLineParser.h"
 #include "PPolynomial.h"
-#include "Ply.h"
+#include "ply.h"
 #include "MemoryUsage.h"
 #include "omp.h"
 
@@ -96,7 +96,8 @@ void DumpOutput2( char* str , const char* format , ... )
 cmdLineString
 	In( "in" ) ,
 	Out( "out" ) ,
-	VoxelGrid( "voxel" );
+	VoxelGrid( "voxel" ) ,
+	XForm( "xForm" );
 
 cmdLineReadable
 #ifdef _WIN32
@@ -105,7 +106,6 @@ cmdLineReadable
 	Verbose( "verbose" ) ,
 	NoComments( "noComments" ) ,
 	PolygonMesh( "polygonMesh" ) ,
-	NonAdaptiveWeights( "nonAdaptive" ) ,
 	Confidence( "confidence" ) ,
 	NonManifold( "nonManifold" ) ,
 	ASCII( "ascii" ) ,
@@ -116,9 +116,20 @@ cmdLineInt
 	SolverDivide( "solverDivide" , 8 ) ,
 	IsoDivide( "isoDivide" , 8 ) ,
 	KernelDepth( "kernelDepth" ) ,
-	MinIters( "minIters" , 8 ) ,
+	AdaptiveExponent( "adaptiveExp" , 1 ) ,
+	MinIters( "minIters" , 24 ) ,
+	FixedIters( "iters" , -1 ) ,
 	VoxelDepth( "voxelDepth" , -1 ) ,
+#if 1
+#ifdef _WIN32
+#pragma message( "[WARNING] Setting default min-depth to 5" )
+#endif // _WIN32
 	MinDepth( "minDepth" , 5 ) ,
+#else
+	MinDepth( "minDepth" , 0 ) ,
+#endif
+	MaxSolveDepth( "maxSolveDepth" ) ,
+	BoundaryType( "boundary" , 1 ) ,
 	Threads( "threads" , omp_get_num_procs() );
 
 cmdLineFloat
@@ -130,10 +141,11 @@ cmdLineFloat
 
 cmdLineReadable* params[] =
 {
-	&In , &Depth , &Out ,
+	&In , &Depth , &Out , &XForm ,
 	&SolverDivide , &IsoDivide , &Scale , &Verbose , &SolverAccuracy , &NoComments ,
-	&KernelDepth , &SamplesPerNode , &Confidence , &NonManifold , &PolygonMesh , &ASCII , &ShowResidual , &MinIters , &NonAdaptiveWeights , &VoxelDepth ,
-	&PointWeight , &VoxelGrid , &Threads , &MinDepth ,
+	&KernelDepth , &SamplesPerNode , &Confidence , &NonManifold , &PolygonMesh , &ASCII , &ShowResidual , &MinIters , &FixedIters , &VoxelDepth ,
+	&PointWeight , &VoxelGrid , &Threads , &MinDepth , &MaxSolveDepth ,
+	&AdaptiveExponent , &BoundaryType ,
 #ifdef _WIN32
 	&Performance ,
 #endif // _WIN32
@@ -194,8 +206,8 @@ void ShowUsage(char* ex)
 	printf( "\t[--%s <solver accuracy>=%g]\n" , SolverAccuracy.name , SolverAccuracy.value );
 	printf( "\t[--%s <minimum number of solver iterations>=%d]\n" , MinIters.name , MinIters.value );
 
-	printf( "\t[--%s]\n", NonAdaptiveWeights.name );
-	printf( "\t\t If this flag is enabled, point weights are not adapted to depth.\n" );
+	printf( "\t[--%s <adaptive weighting exponent>=%d]\n", AdaptiveExponent.name , AdaptiveExponent.value );
+	printf( "\t\t This flag specifies the exponent scale for the adaptive weighting.\n" );
 
 #ifdef _WIN32
 	printf( "\t[--%s]\n" , Performance.name );
@@ -223,7 +235,25 @@ int Execute( int argc , char* argv[] )
 	cmdLineParse( argc-1 , &argv[1] , paramNum , params , 1 );
 	if( Verbose.set ) echoStdout=1;
 
-	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 4)\n" , Degree );
+	XForm4x4< Real > xForm , iXForm;
+	if( XForm.set )
+	{
+		FILE* fp = fopen( XForm.value , "r" );
+		if( !fp )
+		{
+			fprintf( stderr , "[WARNING] Could not read x-form from: %s\n" , XForm.value );
+			xForm = XForm4x4< Real >::Identity();
+		}
+		else
+		{
+			for( int i=0 ; i<4 ; i++ ) for( int j=0 ; j<4 ; j++ ) fscanf( fp , " %f " , &xForm( i , j ) );
+			fclose( fp );
+		}
+	}
+	else xForm = XForm4x4< Real >::Identity();
+	iXForm = xForm.inverse();
+
+	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 4.5)\n" , Degree );
 	char str[1024];
 	for( int i=0 ; i<paramNum ; i++ )
 		if( params[i]->set )
@@ -235,21 +265,16 @@ int Execute( int argc , char* argv[] )
 
 	double t;
 	double tt=Time();
-	Point3D< float > center;
-	Real scale = 1.0;
 	Real isoValue = 0;
-	//////////////////////////////////
-	// Fix courtesy of David Gallup //
-	TreeNodeData::UseIndex = 1;     //
-	//////////////////////////////////
+
 	Octree<Degree> tree;
 	tree.threads = Threads.value;
-	center.coords[0]=center.coords[1]=center.coords[2]=0;
 	if( !In.set )
 	{
 		ShowUsage(argv[0]);
 		return 0;
 	}
+	if( !MaxSolveDepth.set ) MaxSolveDepth.value = Depth.value;
 	if( SolverDivide.value<MinDepth.value )
 	{
 		fprintf( stderr , "[WARNING] %s must be at least as large as %s: %d>=%d\n" , SolverDivide.name , MinDepth.name , SolverDivide.value , MinDepth.value );
@@ -266,41 +291,43 @@ int Execute( int argc , char* argv[] )
 	t=Time();
 	int kernelDepth = KernelDepth.set ?  KernelDepth.value : Depth.value-2;
 
-	tree.setBSplineData( Depth.value , Real(1.0)/(1<<Depth.value) , true );
+	tree.setBSplineData( Depth.value , BoundaryType.value );
 	if( kernelDepth>Depth.value )
 	{
 		fprintf( stderr,"[ERROR] %s can't be greater than %s: %d <= %d\n" , KernelDepth.name , Depth.name , KernelDepth.value , Depth.value );
 		return EXIT_FAILURE;
 	}
 
+	double maxMemoryUsage;
 	t=Time() , tree.maxMemoryUsage=0;
-	int pointCount = tree.setTree( In.value , Depth.value , MinDepth.value , kernelDepth , Real(SamplesPerNode.value) , Scale.value , center , scale , Confidence.set , PointWeight.value , !NonAdaptiveWeights.set );
+	int pointCount = tree.setTree( In.value , Depth.value , MinDepth.value , kernelDepth , Real(SamplesPerNode.value) , Scale.value , Confidence.set , PointWeight.value , AdaptiveExponent.value , xForm );
 	tree.ClipTree();
-	tree.finalize();
-	tree.RefineBoundary( IsoDivide.value );
+	tree.finalize( IsoDivide.value );
 
 	DumpOutput2( comments[commentNum++] , "#             Tree set in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
 	DumpOutput( "Input Points: %d\n" , pointCount );
 	DumpOutput( "Leaves/Nodes: %d/%d\n" , tree.tree.leaves() , tree.tree.nodes() );
 	DumpOutput( "Memory Usage: %.3f MB\n" , float( MemoryInfo::Usage() )/(1<<20) );
 
+	maxMemoryUsage = tree.maxMemoryUsage;
 	t=Time() , tree.maxMemoryUsage=0;
 	tree.SetLaplacianConstraints();
 	DumpOutput2( comments[commentNum++] , "#      Constraints set in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
 	DumpOutput( "Memory Usage: %.3f MB\n" , float( MemoryInfo::Usage())/(1<<20) );
+	maxMemoryUsage = std::max< double >( maxMemoryUsage , tree.maxMemoryUsage );
 
 	t=Time() , tree.maxMemoryUsage=0;
-	tree.LaplacianMatrixIteration( SolverDivide.value, ShowResidual.set , MinIters.value , SolverAccuracy.value );
+	tree.LaplacianMatrixIteration( SolverDivide.value, ShowResidual.set , MinIters.value , SolverAccuracy.value , MaxSolveDepth.value , FixedIters.value );
 	DumpOutput2( comments[commentNum++] , "# Linear system solved in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
 	DumpOutput( "Memory Usage: %.3f MB\n" , float( MemoryInfo::Usage() )/(1<<20) );
+	maxMemoryUsage = std::max< double >( maxMemoryUsage , tree.maxMemoryUsage );
 
-	CoredVectorMeshData mesh;
+	CoredFileMeshData mesh;
 	if( Verbose.set ) tree.maxMemoryUsage=0;
 	t=Time();
 	isoValue = tree.GetIsoValue();
 	DumpOutput( "Got average in: %f\n" , Time()-t );
 	DumpOutput( "Iso-Value: %e\n" , isoValue );
-	DumpOutput( "Memory Usage: %.3f MB\n" , float(tree.MemoryUsage()) );
 
 	if( VoxelGrid.set )
 	{
@@ -310,9 +337,16 @@ int Execute( int argc , char* argv[] )
 		else
 		{
 			int res;
-			float* values = tree.GetSolutionGrid( res , isoValue , VoxelDepth.value );
+			Real* values = tree.GetSolutionGrid( res , isoValue , VoxelDepth.value );
 			fwrite( &res , sizeof(int) , 1 , fp );
-			fwrite( values , sizeof(float) , res*res*res , fp );
+			if( sizeof(Real)==sizeof(float) ) fwrite( values , sizeof(float) , res*res*res , fp );
+			else
+			{
+				float *fValues = new float[res*res*res];
+				for( int i=0 ; i<res*res*res ; i++ ) fValues[i] = float( values[i] );
+				fwrite( fValues , sizeof(float) , res*res*res , fp );
+				delete[] fValues;
+			}
 			fclose( fp );
 			delete[] values;
 		}
@@ -321,26 +355,36 @@ int Execute( int argc , char* argv[] )
 
 	if( Out.set )
 	{
-		t=Time();
+		t = Time() , tree.maxMemoryUsage = 0;
 		tree.GetMCIsoTriangles( isoValue , IsoDivide.value , &mesh , 0 , 1 , !NonManifold.set , PolygonMesh.set );
 		if( PolygonMesh.set ) DumpOutput2( comments[commentNum++] , "#         Got polygons in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
 		else                  DumpOutput2( comments[commentNum++] , "#        Got triangles in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
-		DumpOutput2( comments[commentNum++],"#              Total time: %9.1f (s)\n" , Time()-tt );
+		maxMemoryUsage = std::max< double >( maxMemoryUsage , tree.maxMemoryUsage );
+		DumpOutput2( comments[commentNum++],"#             Total Solve: %9.1f (s), %9.1f (MB)\n" , Time()-tt , maxMemoryUsage );
 
 		if( NoComments.set )
 		{
-			if( ASCII.set ) PlyWritePolygons( Out.value , &mesh , PLY_ASCII         , center , scale );
-			else            PlyWritePolygons( Out.value , &mesh , PLY_BINARY_NATIVE , center , scale );
+			if( ASCII.set ) PlyWritePolygons( Out.value , &mesh , PLY_ASCII         , NULL , 0 , iXForm );
+			else            PlyWritePolygons( Out.value , &mesh , PLY_BINARY_NATIVE , NULL , 0 , iXForm );
 		}
 		else
 		{
-			if( ASCII.set ) PlyWritePolygons( Out.value , &mesh , PLY_ASCII         , center , scale , comments , commentNum );
-			else            PlyWritePolygons( Out.value , &mesh , PLY_BINARY_NATIVE , center , scale , comments , commentNum );
+			if( ASCII.set ) PlyWritePolygons( Out.value , &mesh , PLY_ASCII         , comments , commentNum , iXForm );
+			else            PlyWritePolygons( Out.value , &mesh , PLY_BINARY_NATIVE , comments , commentNum , iXForm );
 		}
 	}
 
 	return 1;
 }
+
+#ifdef _WIN32
+inline double to_seconds( const FILETIME& ft )
+{
+	const double low_to_sec=100e-9; // 100 nanoseconds
+	const double high_to_sec=low_to_sec*4294967296.0;
+	return ft.dwLowDateTime*low_to_sec+ft.dwHighDateTime*high_to_sec;
+}
+#endif // _WIN32
 
 int main( int argc , char* argv[] )
 {
@@ -349,7 +393,11 @@ int main( int argc , char* argv[] )
 #ifdef _WIN32
 	if( Performance.set )
 	{
-		printf( "Time: %.2f\n" , Time()-t );
+		HANDLE cur_thread=GetCurrentThread();
+		FILETIME tcreat, texit, tkernel, tuser;
+		if( GetThreadTimes( cur_thread , &tcreat , &texit , &tkernel , &tuser ) )
+			printf( "Time (Wall/User/Kernel): %.2f / %.2f / %.2f\n" , Time()-t , to_seconds( tuser ) , to_seconds( tkernel ) );
+		else printf( "Time: %.2f\n" , Time()-t );
 		HANDLE h = GetCurrentProcess();
 		PROCESS_MEMORY_COUNTERS pmc;
 		if( GetProcessMemoryInfo( h , &pmc , sizeof(pmc) ) ) printf( "Peak Memory (MB): %d\n" , pmc.PeakWorkingSetSize>>20 );

@@ -98,11 +98,11 @@ BSplineData< Degree , Real >::~BSplineData(void)
 	functionCount = 0;
 }
 
-template<int Degree,class Real>
-void BSplineData<Degree,Real>::set( int maxDepth , bool useDotRatios , bool reflectBoundary )
+template< int Degree , class Real >
+void BSplineData<Degree,Real>::set( int maxDepth , bool useDotRatios , int boundaryType )
 {
-	this->useDotRatios    = useDotRatios;
-	this->reflectBoundary = reflectBoundary;
+	this->useDotRatios = useDotRatios;
+	this->boundaryType = boundaryType;
 
 	depth = maxDepth;
 	// [Warning] This assumes that the functions spacing is dual
@@ -114,13 +114,13 @@ void BSplineData<Degree,Real>::set( int maxDepth , bool useDotRatios , bool refl
 	baseFunction = PPolynomial< Degree >::BSpline();
 	for( int i=0 ; i<=Degree ; i++ ) baseBSpline[i] = Polynomial< Degree >::BSplineComponent( i ).shift( double(-(Degree+1)/2) + i - 0.5 );
 	dBaseFunction = baseFunction.derivative();
-	StartingPolynomial< Degree > sPolys[Degree+3];
+	StartingPolynomial< Degree > sPolys[Degree+4];
 
 	for( int i=0 ; i<Degree+3 ; i++ )
 	{
 		sPolys[i].start = double(-(Degree+1)/2) + i - 1.5;
 		sPolys[i].p *= 0;
-		if(         i<=Degree   )  sPolys[i].p += baseBSpline[i  ].shift( -1 );
+		if(         i<=Degree   )  sPolys[i].p += baseBSpline[i  ].shift( -1 ) * boundaryType;
 		if( i>=1 && i<=Degree+1 )  sPolys[i].p += baseBSpline[i-1];
 		for( int j=0 ; j<i ; j++ ) sPolys[i].p -= sPolys[j].p;
 	}
@@ -130,35 +130,51 @@ void BSplineData<Degree,Real>::set( int maxDepth , bool useDotRatios , bool refl
 		sPolys[i].start = double(-(Degree+1)/2) + i - 0.5;
 		sPolys[i].p *= 0;
 		if(         i<=Degree   )  sPolys[i].p += baseBSpline[i  ];
-		if( i>=1 && i<=Degree+1 )  sPolys[i].p += baseBSpline[i-1].shift( 1 );
+		if( i>=1 && i<=Degree+1 )  sPolys[i].p += baseBSpline[i-1].shift( 1 ) * boundaryType;
 		for( int j=0 ; j<i ; j++ ) sPolys[i].p -= sPolys[j].p;
 	}
 	rightBaseFunction.set( sPolys , Degree+3 );
+	for( int i=0 ; i<Degree+4 ; i++ )
+	{
+		sPolys[i].start = double(-(Degree+1)/2) + i - 1.5;
+		sPolys[i].p *= 0;
+		if(         i<=Degree   )  sPolys[i].p += baseBSpline[i  ].shift( -1 ) * boundaryType; // The left-shifted B-spline
+		if( i>=1 && i<=Degree+1 )  sPolys[i].p += baseBSpline[i-1];             // The centered B-Spline
+		if( i>=2 && i<=Degree+2 )  sPolys[i].p += baseBSpline[i-2].shift(  1 ) * boundaryType; // The right-shifted B-spline
+		for( int j=0 ; j<i ; j++ ) sPolys[i].p -= sPolys[j].p;
+	}
+	leftRightBaseFunction.set( sPolys , Degree+4 );
+
 	dLeftBaseFunction  =  leftBaseFunction.derivative();
 	dRightBaseFunction = rightBaseFunction.derivative();
-	leftBSpline = rightBSpline = baseBSpline;
+	dLeftRightBaseFunction = leftRightBaseFunction.derivative();
+	leftRightBSpline = leftBSpline = rightBSpline = baseBSpline;
 	leftBSpline [1] +=  leftBSpline[2].shift( -1 ) ,  leftBSpline[0] *= 0;
 	rightBSpline[1] += rightBSpline[0].shift(  1 ) , rightBSpline[2] *= 0;
+	leftRightBSpline[1] += leftRightBSpline[2].shift( -1 ) + leftRightBSpline[0].shift( 1 ) , leftRightBSpline[0] *= 0 , leftRightBSpline[2] *= 0 ;
+
 	double c , w;
 	for( int i=0 ; i<functionCount ; i++ )
 	{
 		BinaryNode< double >::CenterAndWidth( i , c , w );
 		baseFunctions[i] = baseFunction.scale(w).shift(c);
 		baseBSplines[i] = baseBSpline.scale(w).shift(c);
-		if( reflectBoundary )
+		if( boundaryType )
 		{
 			int d , off , r;
 			BinaryNode< double >::DepthAndOffset( i , d , off );
 			r = 1<<d;
-			if     ( off==0   ) baseFunctions[i] =  leftBaseFunction.scale(w).shift(c);
-			else if( off==r-1 ) baseFunctions[i] = rightBaseFunction.scale(w).shift(c);
-			if     ( off==0   ) baseBSplines[i] =  leftBSpline.scale(w).shift(c);
-			else if( off==r-1 ) baseBSplines[i] = rightBSpline.scale(w).shift(c);
+			if     ( off==0 && off==r-1 ) baseFunctions[i] = leftRightBaseFunction.scale(w).shift(c);
+			else if( off==0             ) baseFunctions[i] =      leftBaseFunction.scale(w).shift(c);
+			else if(           off==r-1 ) baseFunctions[i] =     rightBaseFunction.scale(w).shift(c);
+			if     ( off==0 && off==r-1 ) baseBSplines [i] = leftRightBSpline.scale(w).shift(c);
+			else if( off==0             ) baseBSplines [i] =      leftBSpline.scale(w).shift(c);
+			else if(           off==r-1 ) baseBSplines [i] =     rightBSpline.scale(w).shift(c);
 		}
 	}
 }
 template<int Degree,class Real>
-void BSplineData<Degree,Real>::setDotTables( int flags )
+void BSplineData<Degree,Real>::setDotTables( int flags , bool inset )
 {
 	clearDotTables( flags );
 	int size = ( functionCount*functionCount + functionCount )>>1;
@@ -195,18 +211,19 @@ void BSplineData<Degree,Real>::setDotTables( int flags )
 		for( int off1=0 ; off1<(1<<d1) ; off1++ )
 		{
 			int ii = BinaryNode< Real >::CenterIndex( d1 , off1 );
-			BSplineElements< Degree > b1( 1<<d1 , off1 , reflectBoundary ? BSplineElements<Degree>::NEUMANN   : BSplineElements< Degree>::NONE );
+			BSplineElements< Degree > b1( 1<<d1 , off1 , boundaryType , inset ? ( 1<<(d1-2) ) : 0 );
 			BSplineElements< Degree-1 > db1;
 			b1.differentiate( db1 );
 
 			int start1 , end1;
 
-			start1 = -1;
+			start1 = -1 , end1 = -1;
 			for( int i=0 ; i<int(b1.size()) ; i++ ) for( int j=0 ; j<=Degree ; j++ )
 			{
 				if( b1[i][j] && start1==-1 ) start1 = i;
 				if( b1[i][j] ) end1 = i+1;
 			}
+			if( start1==end1 ) continue;
 			for( int d2=d1 ; d2<=depth ; d2++ )
 			{
 				for( int off2=0 ; off2<(1<<d2) ; off2++ )
@@ -218,7 +235,7 @@ void BSplineData<Degree,Real>::setDotTables( int flags )
 					end2   = std::min< int >(   end1 ,   end2 );
 					if( d1==d2 && off2<off1 ) continue;
 					int jj = BinaryNode< Real >::CenterIndex( d2 , off2 );
-					BSplineElements< Degree > b2( 1<<d2 , off2 , reflectBoundary ? BSplineElements<Degree>::NEUMANN   : BSplineElements< Degree>::NONE );
+					BSplineElements< Degree > b2( 1<<d2 , off2 , boundaryType , inset ? ( 1<<(d2-2) ) : 0 );
 					BSplineElements< Degree-1 > db2;
 					b2.differentiate( db2 );
 
@@ -324,28 +341,31 @@ void BSplineData<Degree,Real>::setValueTables( int flags , double smooth )
 		for( int j=0 ; j<sampleCount ; j++ )
 		{
 			double x=double(j)/(sampleCount-1);
-			if(flags &   VALUE_FLAG){ valueTables[j*functionCount+i]=Real( function(x));}
-			if(flags & D_VALUE_FLAG){dValueTables[j*functionCount+i]=Real(dFunction(x));}
+			if( flags &   VALUE_FLAG )  valueTables[j*functionCount+i] = Real(  function(x) );
+			if( flags & D_VALUE_FLAG ) dValueTables[j*functionCount+i] = Real( dFunction(x) );
 		}
 	}
 }
 template<int Degree,class Real>
-void BSplineData<Degree,Real>::setValueTables(int flags,double valueSmooth,double normalSmooth){
+void BSplineData<Degree,Real>::setValueTables( int flags , double valueSmooth , double derivativeSmooth )
+{
 	clearValueTables();
 	if(flags &   VALUE_FLAG){ valueTables=new Real[functionCount*sampleCount];}
 	if(flags & D_VALUE_FLAG){dValueTables=new Real[functionCount*sampleCount];}
 	PPolynomial<Degree+1> function;
 	PPolynomial<Degree>  dFunction;
-	for(int i=0;i<functionCount;i++){
-		if(valueSmooth>0)	{ function=baseFunctions[i].MovingAverage(valueSmooth);}
-		else				{ function=baseFunctions[i];}
-		if(normalSmooth>0)	{dFunction=baseFunctions[i].derivative().MovingAverage(normalSmooth);}
-		else				{dFunction=baseFunctions[i].derivative();}
+	for( int i=0 ; i<functionCount ; i++ )
+	{
+		if( valueSmooth>0 )      function=baseFunctions[i].MovingAverage( valueSmooth );
+		else                     function=baseFunctions[i];
+		if( derivativeSmooth>0 ) dFunction=baseFunctions[i].derivative().MovingAverage( derivativeSmooth );
+		else                     dFunction=baseFunctions[i].derivative();
 
-		for(int j=0;j<sampleCount;j++){
+		for( int j=0 ; j<sampleCount ; j++ )
+		{
 			double x=double(j)/(sampleCount-1);
-			if(flags &   VALUE_FLAG){ valueTables[j*functionCount+i]=Real( function(x));}
-			if(flags & D_VALUE_FLAG){dValueTables[j*functionCount+i]=Real(dFunction(x));}
+			if( flags &   VALUE_FLAG )  valueTables[j*functionCount+i] = Real( function(x));
+			if( flags & D_VALUE_FLAG ) dValueTables[j*functionCount+i] = Real(dFunction(x));
 		}
 	}
 }
@@ -382,14 +402,14 @@ inline int BSplineData<Degree,Real>::SymmetricIndex( int i1 , int i2 , int& inde
 }
 
 
-////////////////////////
-// BSplineElementData //
-////////////////////////
+/////////////////////
+// BSplineElements //
+/////////////////////
 template< int Degree >
-BSplineElements< Degree >::BSplineElements( int res , int offset , int boundary )
+BSplineElements< Degree >::BSplineElements( int res , int offset , int boundary , int inset )
 {
 	denominator = 1;
-	resize( res , BSplineElementCoefficients<Degree>() );
+	resize( res , BSplineElementCoefficients< Degree >() );
 
 	for( int i=0 ; i<=Degree ; i++ )
 	{
@@ -402,6 +422,7 @@ BSplineElements< Degree >::BSplineElements( int res , int offset , int boundary 
 		if( Degree&1 ) _addLeft( offset-res , boundary ) , _addRight(  offset+res     , boundary );
 		else           _addLeft( -offset-1  , boundary ) , _addRight( -offset-1+2*res , boundary );
 	}
+	if( inset ) for( int i=0 ; i<inset && i<res ; i++ ) for( int j=0 ; j<=Degree ; j++ ) (*this)[i][j] = (*this)[res-1-i][j] = 0;
 }
 template< int Degree >
 void BSplineElements< Degree >::_addLeft( int offset , int boundary )
