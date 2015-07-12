@@ -187,8 +187,8 @@ void BSplineData< Degree >::set( int maxDepth , int boundaryType )
 
 	depth = maxDepth;
 	// [Warning] This assumes that the functions spacing is dual
-	functionCount = BinaryNode< double >::CumulativeCenterCount( depth );
-	sampleCount   = BinaryNode< double >::CenterCount( depth ) + BinaryNode< double >::CornerCount( depth );
+	functionCount = BinaryNode::CumulativeCenterCount( depth );
+	sampleCount   = BinaryNode::CenterCount( depth ) + BinaryNode::CornerCount( depth );
 	baseFunctions = NewPointer< PPolynomial< Degree > >( functionCount );
 	baseBSplines = NewPointer< BSplineComponents >( functionCount );
 
@@ -237,13 +237,13 @@ void BSplineData< Degree >::set( int maxDepth , int boundaryType )
 	double c , w;
 	for( size_t i=0 ; i<functionCount ; i++ )
 	{
-		BinaryNode< double >::CenterAndWidth( int(i) , c , w );
+		BinaryNode::CenterAndWidth( int(i) , c , w );
 		baseFunctions[i] = baseFunction.scale(w).shift(c);
 		baseBSplines[i] = baseBSpline.scale(w).shift(c);
 		if( _boundaryType )
 		{
 			int d , off , r;
-			BinaryNode< double >::DepthAndOffset( int(i) , d , off );
+			BinaryNode::DepthAndOffset( int(i) , d , off );
 			r = 1<<d;
 			if     ( off==0 && off==r-1 ) baseFunctions[i] = leftRightBaseFunction.scale(w).shift(c);
 			else if( off==0             ) baseFunctions[i] =      leftBaseFunction.scale(w).shift(c);
@@ -301,7 +301,7 @@ double BSplineData< Degree >::value( int depth ,  int off , double smoothingRadi
 	PPolynomial< Degree   > dFunction;
 
 	if( off<0 || off>=(1<<depth) ) return 0;
-	int idx = BinaryNode< double >::CenterIndex( depth , off );
+	int idx = BinaryNode::CenterIndex( depth , off );
 
 	if( smoothingRadius>0 ) function = baseFunctions[idx].MovingAverage( smoothingRadius );
 	else                    function = baseFunctions[idx];
@@ -419,9 +419,9 @@ inline int BSplineData< Degree >::DotTables< Real >::SymmetricIndex( int i1 , in
 }
 template< int Degree >
 template< class Real >
-typename BSplineData< Degree >::DotTables< Real > BSplineData< Degree >::getDotTables( int flags , bool useDotRatios , bool inset ) const
+typename BSplineData< Degree >::template DotTables< Real > BSplineData< Degree >::getDotTables( int flags , bool useDotRatios , bool inset ) const
 {
-	typename BSplineData< Degree >::DotTables< Real > dTables;
+	typename BSplineData< Degree >::template DotTables< Real > dTables;
 	dTables.functionCount = functionCount;
 
 	size_t size = ( functionCount*functionCount + functionCount )>>1;
@@ -456,7 +456,7 @@ typename BSplineData< Degree >::DotTables< Real > BSplineData< Degree >::getDotT
 
 	for( int d1=0 ; d1<=depth ; d1++ ) for( int off1=0 ; off1<(1<<d1) ; off1++ )
 	{
-		int ii = BinaryNode< Real >::CenterIndex( d1 , off1 );
+		int ii = BinaryNode::CenterIndex( d1 , off1 );
 		BSplineElements< Degree > b1( 1<<d1 , off1 , _boundaryType , inset ? ( 1<<(d1-2) ) : 0 );
 		BSplineElements< Degree-1 > db1;
 		b1.differentiate( db1 );
@@ -479,13 +479,13 @@ typename BSplineData< Degree >::DotTables< Real > BSplineData< Degree >::getDotT
 				start2 = std::max< int >( start1 , start2 );
 				end2   = std::min< int >(   end1 ,   end2 );
 				if( d1==d2 && off2<off1 ) continue;
-				int jj = BinaryNode< Real >::CenterIndex( d2 , off2 );
+				int jj = BinaryNode::CenterIndex( d2 , off2 );
 				BSplineElements< Degree > b2( 1<<d2 , off2 , _boundaryType , inset ? ( 1<<(d2-2) ) : 0 );
 				BSplineElements< Degree-1 > db2;
 				b2.differentiate( db2 );
 
-				size_t idx = SymmetricIndex( ii , jj );
-				size_t idx1 = Index( ii , jj ) , idx2 = Index( jj , ii );
+				size_t idx = DotTables< Real >::SymmetricIndex( ii , jj );
+				size_t idx1 = DotTables< Real >::Index( ii , jj ) , idx2 = DotTables< Real >::Index( jj , ii );
 
 				memset( vvSums , 0 , sizeof( int ) * ( Degree+1 ) * ( Degree+1 ) );
 				memset( vdSums , 0 , sizeof( int ) * ( Degree+1 ) * ( Degree   ) );
@@ -511,18 +511,9 @@ typename BSplineData< Degree >::DotTables< Real > BSplineData< Degree >::getDotT
 				ddDot /= ( b1.denominator * b2.denominator );
 				if( fabs(vvDot)<1e-15 ) continue;
 				if( flags & VV_DOT_FLAG ) dTables.vvDotTable[idx] = Real( vvDot );
-				if( _useDotRatios )
-				{
-					if( flags & DV_DOT_FLAG ) dTables.dvDotTable[idx1] = Real( dvDot / vvDot );
-					if( flags & DV_DOT_FLAG ) dTables.dvDotTable[idx2] = Real( vdDot / vvDot );
-					if( flags & DD_DOT_FLAG ) dTables.ddDotTable[idx ] = Real( ddDot / vvDot );
-				}
-				else
-				{
-					if( flags & DV_DOT_FLAG ) dTables.dvDotTable[idx1] = Real( dvDot );
-					if( flags & DV_DOT_FLAG ) dTables.dvDotTable[idx2] = Real( dvDot );
-					if( flags & DD_DOT_FLAG ) dTables.ddDotTable[idx ] = Real( ddDot );
-				}
+				if( flags & DV_DOT_FLAG ) dTables.dvDotTable[idx1] = Real( dvDot );
+				if( flags & DV_DOT_FLAG ) dTables.dvDotTable[idx2] = Real( dvDot );
+				if( flags & DD_DOT_FLAG ) dTables.ddDotTable[idx ] = Real( ddDot );
 			}
 			BSplineElements< Degree > b;
 			b = b1;
@@ -557,9 +548,9 @@ template< class Real >
 inline size_t BSplineData< Degree >::ValueTables< Real >::Index( int i1 , int i2 ) const { return size_t(i1)*functionCount + size_t(i2); }
 template< int Degree >
 template< class Real >
-typename BSplineData< Degree >::ValueTables< Real > BSplineData< Degree >::getValueTables( int flags , double valueSmooth , double derivativeSmooth ) const
+typename BSplineData< Degree >::template ValueTables< Real > BSplineData< Degree >::getValueTables( int flags , double valueSmooth , double derivativeSmooth ) const
 {
-	typename BSplineData< Degree >::ValueTables< Real > vTables;
+	typename BSplineData< Degree >::template ValueTables< Real > vTables;
 	vTables.functionCount = functionCount;
 	vTables.sampleCount = sampleCount;
 
@@ -588,7 +579,7 @@ template< class Real >
 void BSplineData< Degree >::ValueTables< Real >::setSampleSpan( int idx , int& start , int& end , double smooth ) const
 {
 	int d , off , res;
-	BinaryNode< double >::DepthAndOffset( idx , d , off );
+	BinaryNode::DepthAndOffset( idx , d , off );
 	res = 1<<d;
 	double _start = ( off + 0.5 - 0.5*(Degree+1) ) / res - smooth;
 	double _end   = ( off + 0.5 + 0.5*(Degree+1) ) / res + smooth;
@@ -630,7 +621,7 @@ BSplineElements< Degree >::BSplineElements( int res , int offset , int boundary 
 template< int Degree >
 void BSplineElements< Degree >::_addLeft( int offset , int boundary )
 {
-	int res = int( size() );
+	int res = int( std::vector< BSplineElementCoefficients< Degree > >::size() );
 	bool set = false;
 	for( int i=0 ; i<=Degree ; i++ )
 	{
@@ -642,7 +633,7 @@ void BSplineElements< Degree >::_addLeft( int offset , int boundary )
 template< int Degree >
 void BSplineElements< Degree >::_addRight( int offset , int boundary )
 {
-	int res = int( size() );
+	int res = int( std::vector< BSplineElementCoefficients< Degree > >::size() );
 	bool set = false;
 	for( int i=0 ; i<=Degree ; i++ )
 	{
@@ -716,9 +707,9 @@ void BSplineElements< 2 >::upSample( BSplineElements< 2 >& high ) const
 template< int Degree >
 void BSplineElements< Degree >::differentiate( BSplineElements< Degree-1 >& d ) const
 {
-	d.resize( size() );
+	d.resize( std::vector< BSplineElementCoefficients< Degree > >::size() );
 	d.assign( d.size()  , BSplineElementCoefficients< Degree-1 >() );
-	for( int i=0 ; i<int(size()) ; i++ ) for( int j=0 ; j<=Degree ; j++ )
+	for( int i=0 ; i<int(std::vector< BSplineElementCoefficients< Degree > >::size()) ; i++ ) for( int j=0 ; j<=Degree ; j++ )
 	{
 		if( j-1>=0 )   d[i][j-1] -= (*this)[i][j];
 		if( j<Degree ) d[i][j  ] += (*this)[i][j];

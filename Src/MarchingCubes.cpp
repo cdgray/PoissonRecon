@@ -36,19 +36,18 @@ int Square::AntipodalCornerIndex(int idx){
 	FactorCornerIndex(idx,x,y);
 	return CornerIndex( (x+1)%2 , (y+1)%2 );
 }
-int Square::CornerIndex(int x,int y){return (y<<1)|x;}
-void Square::FactorCornerIndex(int idx,int& x,int& y){
-	x=(idx>>0)%2;
-	y=(idx>>1)%2;
-}
-int Square::EdgeIndex(int orientation,int i){
-	switch(orientation){
+int Square::CornerIndex( int x , int y ){ return (y<<1)|x; }
+void Square::FactorCornerIndex( int idx , int& x , int& y ){ x=(idx>>0)&1 , y=(idx>>1)&1; }
+int Square::EdgeIndex( int orientation , int i )
+{
+	switch( orientation )
+	{
 		case 0: // x
-			if(!i)	{return  0;} // (0,0) -> (1,0)
-			else	{return  2;} // (0,1) -> (1,1)
+			if( !i ) return  0; // (0,0) -> (1,0)
+			else     return  2; // (0,1) -> (1,1)
 		case 1: // y
-			if(!i)	{return  3;} // (0,0) -> (0,1)
-			else	{return  1;} // (1,0) -> (1,1)
+			if( !i ) return  3; // (0,0) -> (0,1)
+			else     return  1; // (1,0) -> (1,1)
 	};
 	return -1;
 }
@@ -69,12 +68,12 @@ void Square::EdgeCorners(int idx,int& c1,int& c2){
 	FactorEdgeIndex(idx,orientation,i);
 	switch(orientation){
 		case 0:
-			c1=CornerIndex(0,i);
-			c2=CornerIndex(1,i);
+			c1 = CornerIndex(0,i);
+			c2 = CornerIndex(1,i);
 			break;
 		case 1:
-			c1=CornerIndex(i,0);
-			c2=CornerIndex(i,1);
+			c1 = CornerIndex(i,0);
+			c2 = CornerIndex(i,1);
 			break;
 	};
 }
@@ -101,12 +100,8 @@ int Square::ReflectCornerIndex(int idx,int edgeIndex){
 //////////
 // Cube //
 //////////
-int Cube::CornerIndex(int x,int y,int z){ return (z<<2)|(y<<1)|x; }
-void Cube::FactorCornerIndex(int idx,int& x,int& y,int& z){
-	x=(idx>>0)%2;
-	y=(idx>>1)%2;
-	z=(idx>>2)%2;
-}
+int Cube::CornerIndex( int x , int y , int z ){ return (z<<2)|(y<<1)|x; }
+void Cube::FactorCornerIndex( int idx , int& x , int& y , int& z ){ x = (idx>>0)&1 , y = (idx>>1)&1 , z = (idx>>2)&1; }
 int Cube::EdgeIndex(int orientation,int i,int j){return (i | (j<<1))|(orientation<<2);}
 void Cube::FactorEdgeIndex( int idx , int& orientation , int& i , int &j )
 {
@@ -143,6 +138,24 @@ void Cube::FactorFaceIndex( int idx , int& dir , int& offSet )
 {
 	dir  = idx>>1;
 	offSet=idx &1;
+}
+bool Cube::IsEdgeCorner( int cIndex , int e )
+{
+	int o , i , j;
+	FactorEdgeIndex( e , o , i , j );
+	switch( o )
+	{
+	case 0: return (cIndex && 2)==(i<<1) && (cIndex && 4)==(j<<2);
+	case 1: return (cIndex && 1)==(i<<0) && (cIndex && 4)==(j<<2);
+	case 2: return (cIndex && 4)==(i<<2) && (cIndex && 2)==(j<<1);
+	default: return false;
+	}
+}
+bool Cube::IsFaceCorner( int cIndex , int f )
+{
+	int dir , off;
+	FactorFaceIndex( f , dir , off );
+	return ( cIndex & (1<<dir) )==(off<<dir);
 }
 
 int Cube::FaceAdjacentToEdges( int eIndex1 , int eIndex2 )
@@ -289,6 +302,20 @@ int	Cube::EdgeReflectEdgeIndex( int edgeIndex )
 /////////////////////
 // MarchingSquares //
 /////////////////////
+#if NEW_ORDERING
+#pragma message ( "[WARNING] Not clear if MarchingSquares::edgeMask and MarchingSquares::edges are set correctly" )
+const int MarchingSquares::cornerMap[] = { 0 , 1 , 3 , 2 };
+bool MarchingSquares::HasEdgeRoots( unsigned char mcIndex , int edgeIndex )
+{
+	int c1 , c2;
+	Square::EdgeCorners( edgeIndex , c1 , c2 );
+	return !( 
+		( ( mcIndex&(1<<MarchingSquares::cornerMap[c1]) ) &&  ( mcIndex&(1<<MarchingSquares::cornerMap[c2])) )
+		||
+		(!( mcIndex&(1<<MarchingSquares::cornerMap[c1]) ) && !( mcIndex&(1<<MarchingSquares::cornerMap[c2])) )
+		);
+}
+#endif // NEW_ORDERING
 /*
 0} // (0,0) -> (1,0)
 1} // (1,0) -> (1,1)
@@ -314,6 +341,36 @@ const int MarchingSquares::edgeMask[1<<Square::CORNERS]=
 	    9, // 14 -> 1,2,3   -> (1,0) (0,1) (1,1)       -> 0,3     ->  9
 	    0, // 15 -> 0,1,2,3 -> (0,0) (1,0) (0,1) (1,1) -> 
 };
+#if NEW_ORDERING
+/*
+0} // (0,0) -> (1,0)
+1} // (1,0) -> (1,1)
+2} // (0,1) -> (1,1)
+3} // (0,0) -> (0,1)
+*/
+const int MarchingSquares::edges[1<<Square::CORNERS][MAX_EDGES*2+1] =
+{
+	// Positive to the right
+	/////////////////////////////////// (0,0) (1,0) (1,1) (0,1)
+	{ -1 ,  -1 ,  -1 ,  -1 ,  -1 } , //   -     -     -     -
+	{  3 ,   0 ,  -1 ,  -1 ,  -1 } , //   +     -     -     -
+	{  0 ,   1 ,  -1 ,  -1 ,  -1 } , //   -     +     -     -
+	{  3 ,   1 ,  -1 ,  -1 ,  -1 } , //   +     +     -     -
+	{  1 ,   2 ,  -1 ,  -1 ,  -1 } , //   -     -     +     -
+	{  3 ,   2 ,   1 ,   0 ,  -1 } , //   +     -     +     -
+	{  0 ,   2 ,  -1 ,  -1 ,  -1 } , //   -     +     +     -
+	{  3 ,   2 ,  -1 ,  -1 ,  -1 } , //   +     +     +     -
+	// Now flip the edges
+	{  2 ,   3 ,  -1 ,  -1 ,  -1 } , //   -     -     -     +
+	{  2 ,   0 ,  -1 ,  -1 ,  -1 } , //   +     -     -     +
+	{  2 ,   3 ,   0 ,   1 ,  -1 } , //   -     +     -     +
+	{  2 ,   1 ,  -1 ,  -1 ,  -1 } , //   +     +     -     +
+	{  1 ,   3 ,  -1 ,  -1 ,  -1 } , //   -     -     +     +
+	{  1 ,   0 ,  -1 ,  -1 ,  -1 } , //   +     -     +     +
+	{  0 ,   3 ,  -1 ,  -1 ,  -1 } , //   -     +     +     +
+	{ -1 ,  -1 ,  -1 ,  -1 ,  -1 } , //   +     +     +     +
+};
+#else // !NEW_ORDERING
 const int MarchingSquares::edges[1<<Square::CORNERS][MAX_EDGES*2+1] = {
 	{ -1,  -1,  -1,  -1,  -1}, //
 	{  3,   0,  -1,  -1,  -1}, // (0,0)
@@ -332,18 +389,44 @@ const int MarchingSquares::edges[1<<Square::CORNERS][MAX_EDGES*2+1] = {
 	{  0,   3,  -1,  -1,  -1}, // (1,0) (0,1) (1,1)
 	{ -1,  -1,  -1,  -1,  -1}, // (0,0) (1,0) (0,1) (1,1)
 };
+#endif // NEW_ORDERING
 
 double MarchingSquares::vertexList[Square::EDGES][2];
+
 unsigned char MarchingSquares::GetIndex( const double v[Square::CORNERS] , double iso )
 {
 	unsigned char idx=0;
+#if NEW_ORDERING
+	if( v[ Square::CornerIndex(0,0) ]<iso ) idx |=   1;
+	if( v[ Square::CornerIndex(1,0) ]<iso ) idx |=   2;
+	if( v[ Square::CornerIndex(1,1) ]<iso ) idx |=   4;
+	if( v[ Square::CornerIndex(0,1) ]<iso ) idx |=   8;
+#else // !NEW_ORDERING
 	for( int i=0 ; i<Square::CORNERS ; i++ ) if( v[i]<iso ) idx|=(1<<i);
+#endif // NEW_ORDERING
+	return idx;
+}
+unsigned char MarchingSquares::GetIndex( const float v[Square::CORNERS] , float iso )
+{
+	unsigned char idx=0;
+#if NEW_ORDERING
+	if( v[ Square::CornerIndex(0,0) ]<iso ) idx |=   1;
+	if( v[ Square::CornerIndex(1,0) ]<iso ) idx |=   2;
+	if( v[ Square::CornerIndex(1,1) ]<iso ) idx |=   4;
+	if( v[ Square::CornerIndex(0,1) ]<iso ) idx |=   8;
+#else // !NEW_ORDERING
+	for( int i=0 ; i<Square::CORNERS ; i++ ) if( v[i]<iso ) idx|=(1<<i);
+#endif // NEW_ORDERING
 	return idx;
 }
 
 bool MarchingSquares::IsAmbiguous( const double v[Square::CORNERS] , double isoValue ){ return IsAmbiguous( GetIndex( v , isoValue ) ); }
-bool MarchingSquares::IsAmbiguous( unsigned char idx ){ return (idx==5) || (idx==10); }
 bool MarchingSquares::HasRoots( unsigned char idx ){ return !(idx==0 || idx==15); }
+#if NEW_ORDERING
+bool MarchingSquares::IsAmbiguous( unsigned char idx ){ return (idx==5) || (idx==10); }
+#else // !NEW_ORDERING
+bool MarchingSquares::IsAmbiguous( unsigned char idx ){ return (idx==6) || (idx==9); }
+#endif // NEW_ORDERING
 int MarchingSquares::AddEdges(const double v[Square::CORNERS],double iso,Edge* isoEdges)
 {
 	unsigned char idx;
@@ -372,22 +455,21 @@ int MarchingSquares::AddEdges(const double v[Square::CORNERS],double iso,Edge* i
 	return nEdges;
 }
 
-int MarchingSquares::AddEdgeIndices(const double v[Square::CORNERS],double iso,int* isoIndices){
-	unsigned char idx;
-	int nEdges=0;
+int MarchingSquares::AddEdgeIndices( unsigned char mcIndex , int* isoIndices )
+{
+	int nEdges = 0;
+	/* Square is entirely in/out of the surface */
+	if( !edgeMask[mcIndex] ) return 0;
 
-	idx=GetIndex(v,iso);
-
-	/* Cube is entirely in/out of the surface */
-	if (!edgeMask[idx]) return 0;
-
-	/* Create the triangle */
-	for(int i=0;edges[idx][i]!=-1;i+=2){
-		for(int j=0;j<2;j++){isoIndices[i+j]=edges[idx][i+j];}
+	/* Create the edges */
+	for( int i=0 ; edges[mcIndex][i]!=-1 ; i+=2 )
+	{
+		for( int j=0 ; j<2 ; j++ ) isoIndices[i+j] = edges[mcIndex][i+j];
 		nEdges++;
 	}
 	return nEdges;
 }
+int MarchingSquares::AddEdgeIndices( const double v[Square::CORNERS] , double iso , int* isoIndices ){ return AddEdgeIndices( GetIndex( v , iso ) , isoIndices ); }
 void MarchingSquares::SetVertex(int e,const double values[Square::CORNERS],double iso){
 	int o,i,c1,c2;
 	Square::FactorEdgeIndex(e,o,i);
@@ -704,7 +786,8 @@ const int MarchingCubes::triangles[1<<Cube::CORNERS][MAX_TRIANGLES*3+1] = {
 const int MarchingCubes::cornerMap[Cube::CORNERS]={0,1,3,2,4,5,7,6};
 double MarchingCubes::vertexList[Cube::EDGES][3];
 
-unsigned char MarchingCubes::GetIndex(const double v[Cube::CORNERS],double iso){
+unsigned char MarchingCubes::GetIndex(const double v[Cube::CORNERS],double iso)
+{
 	unsigned char idx=0;
 	if (v[Cube::CornerIndex(0,0,0)] < iso) idx |=   1;
 	if (v[Cube::CornerIndex(1,0,0)] < iso) idx |=   2;
@@ -865,7 +948,7 @@ bool MarchingCubes::HasRoots( const float v[Cube::CORNERS] , float isoValue , in
 bool MarchingCubes::HasFaceRoots( unsigned char mcIndex , int faceIndex ){ return MarchingSquares::HasRoots( GetFaceIndex( mcIndex , faceIndex ) ); }
 bool MarchingCubes::HasEdgeRoots( unsigned char mcIndex , int edgeIndex )
 {
-	int c1,c2;
+	int c1 , c2;
 	Cube::EdgeCorners( edgeIndex , c1 , c2 );
 	return !( 
 		( ( mcIndex&(1<<MarchingCubes::cornerMap[c1]) ) &&  ( mcIndex&(1<<MarchingCubes::cornerMap[c2])) )
@@ -878,16 +961,16 @@ int MarchingCubes::AddTriangles(const float v[Cube::CORNERS],float iso,Triangle*
 	int ntriang=0;
 	Triangle tri;
 
-	idx=GetIndex(v,iso);
+	idx = GetIndex( v , iso );
 
 	/* Cube is entirely in/out of the surface */
-	if (!edgeMask[idx]) return 0;
+	if( !edgeMask[idx] ) return 0;
 
 	/* Find the vertices where the surface intersects the cube */
 	int i,j,ii=1;
 	for( i=0 ; i<12 ; i++ )
 	{
-		if(edgeMask[idx] & ii) SetVertex( i , v , iso );
+		if( edgeMask[idx] & ii ) SetVertex( i , v , iso );
 		ii<<=1;
 	}
 	/* Create the triangle */
@@ -902,20 +985,7 @@ int MarchingCubes::AddTriangles(const float v[Cube::CORNERS],float iso,Triangle*
 	return ntriang;
 }
 
-int MarchingCubes::AddTriangleIndices( const float v[Cube::CORNERS] , float iso , int* isoIndices )
-{
-	unsigned char idx;
-	int ntriang=0;
-	idx=GetIndex(v,iso);
-	/* Cube is entirely in/out of the surface */
-	if (!edgeMask[idx]) return 0;
-	/* Create the triangle */
-	for(int i=0;triangles[idx][i]!=-1;i+=3){
-		for(int j=0;j<3;j++){isoIndices[i+j]=triangles[idx][i+j];}
-		ntriang++;
-	}
-	return ntriang;
-}
+int MarchingCubes::AddTriangleIndices( const float v[Cube::CORNERS] , float iso , int* isoIndices ){ return AddTriangleIndices( GetIndex( v , iso ) , isoIndices ); }
 int MarchingCubes::AddTriangleIndices( int idx , int* isoIndices )
 {
 	int ntriang=0;

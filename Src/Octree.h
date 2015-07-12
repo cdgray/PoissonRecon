@@ -36,7 +36,7 @@ DAMAGE.
 #define DIMENSION 3
 
 
-template< class NodeData , class Real=float >
+template< class NodeData >
 class OctNode
 {
 private:
@@ -47,7 +47,7 @@ private:
 	{
 	public:
 		int count;
-		void Function( const OctNode<NodeData,Real>* node1 , const OctNode<NodeData,Real>* node2 );
+		void Function( const OctNode< NodeData >* node1 , const OctNode< NodeData >* node2 );
 	};
 	template<class NodeAdjacencyFunction>
 	void __processNodeFaces(OctNode* node,NodeAdjacencyFunction* F,int cIndex1,int cIndex2,int cIndex3,int cIndex4);
@@ -96,12 +96,12 @@ public:
 	void centerIndex( int index[DIMENSION] ) const;
 	int depth( void ) const;
 	static inline void DepthAndOffset( const long long& index , int& depth , int offset[DIMENSION] );
-	static inline void CenterAndWidth( const long long& index , Point3D< Real >& center , Real& width );
+	template< class Real > static inline void CenterAndWidth( const long long& index , Point3D< Real >& center , Real& width );
 	static inline int Depth( const long long& index );
 	static inline void Index( int depth , const int offset[3] , short& d , short off[DIMENSION] );
 	static inline unsigned long long Index( int depth , const int offset[3] );
-	void centerAndWidth( Point3D<Real>& center , Real& width ) const;
-	bool isInside( Point3D< Real > p ) const;
+	template< class Real > void centerAndWidth( Point3D<Real>& center , Real& width ) const;
+	template< class Real > bool isInside( Point3D< Real > p ) const;
 
 	size_t leaves( void ) const;
 	size_t maxDepthLeaves( int maxDepth ) const;
@@ -156,7 +156,7 @@ public:
 	template<class NodeAdjacencyFunction>
 	static void ProcessMaxDepthNodeAdjacentNodes(int dx,int dy,int dz,OctNode* node1,int radius1,OctNode* node2,int radius2,int width2,int depth,NodeAdjacencyFunction* F,int processCurrent=1);
 
-	static int CornerIndex( const Point3D<Real>& center , const Point3D<Real> &p );
+	template< class Real > static int CornerIndex( const Point3D<Real>& center , const Point3D<Real> &p );
 
 	OctNode* faceNeighbor(int faceIndex,int forceChildren=0);
 	const OctNode* faceNeighbor(int faceIndex) const;
@@ -165,8 +165,8 @@ public:
 	OctNode* cornerNeighbor(int cornerIndex,int forceChildren=0);
 	const OctNode* cornerNeighbor(int cornerIndex) const;
 
-	OctNode* getNearestLeaf(const Point3D<Real>& p);
-	const OctNode* getNearestLeaf(const Point3D<Real>& p) const;
+	template< class Real > OctNode* getNearestLeaf(const Point3D<Real>& p);
+	template< class Real > const OctNode* getNearestLeaf(const Point3D<Real>& p) const;
 
 	static int CommonEdge(const OctNode* node1,int eIndex1,const OctNode* node2,int eIndex2);
 	static int CompareForwardDepths(const void* v1,const void* v2);
@@ -178,8 +178,9 @@ public:
 
 
 	template<class NodeData2>
-	OctNode& operator = (const OctNode<NodeData2,Real>& node);
+	OctNode& operator = ( const OctNode< NodeData2 >& node );
 
+	template< class Real >
 	static inline int Overlap2(const int &depth1,const int offSet1[DIMENSION],const Real& multiplier1,const int &depth2,const int offSet2[DIMENSION],const Real& multiplier2);
 
 
@@ -213,16 +214,16 @@ public:
 		~NeighborKey3( void );
 
 		void set( int depth );
-		Neighbors3& setNeighbors( OctNode* root , Point3D< Real > p , int d );
-		Neighbors3& getNeighbors( OctNode* root , Point3D< Real > p , int d );		
+		template< class Real > Neighbors3& setNeighbors( OctNode* root , Point3D< Real > p , int d );
+		template< class Real > Neighbors3& getNeighbors( OctNode* root , Point3D< Real > p , int d );		
 		Neighbors3& setNeighbors( OctNode* node , bool flags[3][3][3] );
 		Neighbors3& setNeighbors( OctNode* node );
 		Neighbors3& getNeighbors( OctNode* node );
-		void setNeighbors( OctNode* node , typename OctNode< NodeData , Real >::Neighbors5& neighbors );
-		void getNeighbors( OctNode* node , typename OctNode< NodeData , Real >::Neighbors5& neighbors );
+		void setNeighbors( OctNode* node , typename OctNode< NodeData >::Neighbors5& neighbors );
+		void getNeighbors( OctNode* node , typename OctNode< NodeData >::Neighbors5& neighbors );
 
-		bool setChildNeighbors( Point3D< Real > p , int d , Neighbors3& childNeighbors ) const;
-		bool getChildNeighbors( Point3D< Real > p , int d , Neighbors3& childNeighbors ) const;
+		template< class Real > bool setChildNeighbors( Point3D< Real > p , int d , Neighbors3& childNeighbors ) const;
+		template< class Real > bool getChildNeighbors( Point3D< Real > p , int d , Neighbors3& childNeighbors ) const;
 	};
 	class ConstNeighborKey3
 	{
@@ -237,7 +238,7 @@ public:
 		void set(int depth);
 		ConstNeighbors3& getNeighbors( const OctNode* node );
 		ConstNeighbors3& getNeighbors( const OctNode* node , int minDepth );
-		void getNeighbors( const OctNode* node , typename OctNode< NodeData , Real >::ConstNeighbors5& neighbors );
+		void getNeighbors( const OctNode* node , typename OctNode< NodeData >::ConstNeighbors5& neighbors );
 	};
 	class Neighbors5
 	{

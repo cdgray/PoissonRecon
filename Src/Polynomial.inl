@@ -260,23 +260,6 @@ void Polynomial<Degree>::printnl(void) const{
 	}
 	printf("\n");
 }
-template< int Degree >
-int Polynomial<Degree>::getSolutions( double c , double* roots , double EPS ) const
-{
-	double _roots[4][2];
-	int _rCount=0;
-	switch( Degree )
-	{
-		case 1: _rCount = Factor(                                                       coefficients[1] , coefficients[0]-c , _roots , EPS ) ; break;
-		case 2:	_rCount = Factor(                                     coefficients[2] , coefficients[1] , coefficients[0]-c , _roots , EPS ) ; break;
-		case 3: _rCount = Factor(                   coefficients[3] , coefficients[2] , coefficients[1] , coefficients[0]-c , _roots , EPS ) ; break;
-//		case 4: _rCount = Factor( coefficients[4] , coefficients[3] , coefficients[2] , coefficients[1] , coefficients[0]-c , _roots , EPS ) ; break;
-		default: printf( "Can't solve polynomial of degree: %d\n" , Degree );
-	}
-	int rCount = 0;
-	for( int i=0 ; i<_rCount ; i++ ) if( fabs(_roots[i][1])<=EPS ) roots[rCount++] = _roots[i][0];
-	return rCount;
-}
 template<int Degree>
 void Polynomial<Degree>::getSolutions(double c,std::vector<double>& roots,double EPS) const
 {
@@ -304,6 +287,23 @@ void Polynomial<Degree>::getSolutions(double c,std::vector<double>& roots,double
 			roots.push_back(r[i][0]);
 		}
 	}
+}
+template< int Degree >
+int Polynomial<Degree>::getSolutions( double c , double* roots , double EPS ) const
+{
+	double _roots[4][2];
+	int _rCount=0;
+	switch( Degree )
+	{
+		case 1: _rCount = Factor(                                                       coefficients[1] , coefficients[0]-c , _roots , EPS ) ; break;
+		case 2:	_rCount = Factor(                                     coefficients[2] , coefficients[1] , coefficients[0]-c , _roots , EPS ) ; break;
+		case 3: _rCount = Factor(                   coefficients[3] , coefficients[2] , coefficients[1] , coefficients[0]-c , _roots , EPS ) ; break;
+//		case 4: _rCount = Factor( coefficients[4] , coefficients[3] , coefficients[2] , coefficients[1] , coefficients[0]-c , _roots , EPS ) ; break;
+		default: printf( "Can't solve polynomial of degree: %d\n" , Degree );
+	}
+	int rCount = 0;
+	for( int i=0 ; i<_rCount ; i++ ) if( fabs(_roots[i][1])<=EPS ) roots[rCount++] = _roots[i][0];
+	return rCount;
 }
 template< >
 Polynomial< 0 > Polynomial< 0 >::BSplineComponent( int i )

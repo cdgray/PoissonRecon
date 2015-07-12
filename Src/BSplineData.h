@@ -64,7 +64,7 @@ public:
 
 	void print( FILE* fp=stdout ) const
 	{
-		for( int i=0 ; i<size() ; i++ )
+		for( int i=0 ; i<std::vector< BSplineElementCoefficients< Degree > >::size() ; i++ )
 		{
 			printf( "%d]" , i );
 			for( int j=0 ; j<=Degree ; j++ ) printf( " %d" , (*this)[i][j] );
@@ -180,9 +180,9 @@ public:
 	};
 	void set( int maxDepth , int boundaryType=BSplineElements< Degree >::NONE );
 	template< class Real >
-	DotTables< Real > getDotTables( int flags , bool useDotRatios=true , bool inset=false ) const;
+	typename BSplineData< Degree >::template DotTables< Real > getDotTables( int flags , bool useDotRatios=true , bool inset=false ) const;
 	template< class Real >
-	ValueTables< Real > getValueTables( int flags , double valueSmooth=0 , double normalSmooth=0 ) const;
+	typename BSplineData< Degree >::template ValueTables< Real > getValueTables( int flags , double valueSmooth=0 , double normalSmooth=0 ) const;
 };
 
 template< int Degree1 , int Degree2 > void SetBSplineElementIntegrals( double integrals[Degree1+1][Degree2+1] );

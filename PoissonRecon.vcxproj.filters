@@ -139,5 +139,11 @@
     <None Include="Src\Array.inl">
       <Filter>Include Files</Filter>
     </None>
+    <None Include="Src\MultiGridOctreeData.SortedTreeNodes.inl">
+      <Filter>Include Files</Filter>
+    </None>
+    <None Include="Src\MultiGridOctreeData.IsoSurface.inl">
+      <Filter>Include Files</Filter>
+    </None>
   </ItemGroup>
 </Project>

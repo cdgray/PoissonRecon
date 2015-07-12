@@ -31,9 +31,12 @@ DAMAGE.
 #include <vector>
 #include "Geometry.h"
 
-class Square{
+#define NEW_ORDERING 1
+
+class Square
+{
 public:
-	const static unsigned int CORNERS=4,EDGES=4,NEIGHBORS=4;
+	const static unsigned int CORNERS=4 , EDGES=4 , FACES=1;
 	static int  CornerIndex			(int x,int y);
 	static int  AntipodalCornerIndex(int idx);
 	static void FactorCornerIndex	(int idx,int& x,int& y);
@@ -48,7 +51,7 @@ public:
 
 class Cube{
 public:
-	const static unsigned int CORNERS=8,EDGES=12,NEIGHBORS=6;
+	const static unsigned int CORNERS=8 , EDGES=12 , FACES=6;
 
 	static int  CornerIndex			( int x , int y , int z );
 	static void FactorCornerIndex	( int idx , int& x , int& y , int& z );
@@ -71,6 +74,9 @@ public:
 
 	static void EdgeCorners( int idx , int& c1 , int &c2 );
 	static void FaceCorners( int idx , int& c1 , int &c2 , int& c3 , int& c4 );
+
+	static bool IsEdgeCorner( int cIndex , int e );
+	static bool IsFaceCorner( int cIndex , int f );
 };
 
 class MarchingSquares
@@ -82,13 +88,21 @@ public:
 	static const int edgeMask[1<<Square::CORNERS];
 	static const int edges[1<<Square::CORNERS][2*MAX_EDGES+1];
 	static double vertexList[Square::EDGES][2];
+#if NEW_ORDERING
+	static const int cornerMap[Square::CORNERS];
+#endif // NEW_ORDERING
 
+	static unsigned char GetIndex( const float  values[Square::CORNERS] , float  iso );
 	static unsigned char GetIndex( const double values[Square::CORNERS] , double iso );
 	static bool IsAmbiguous( const double v[Square::CORNERS] , double isoValue );
 	static bool IsAmbiguous( unsigned char idx );
-	static bool HasRoots( unsigned char idx );
+	static bool HasRoots( unsigned char mcIndex );
+#if NEW_ORDERING
+	static bool HasEdgeRoots( unsigned char mcIndex , int edgeIndex );
+#endif // NEW_ORDERING
 	static int AddEdges( const double v[Square::CORNERS] , double isoValue , Edge* edges );
 	static int AddEdgeIndices( const double v[Square::CORNERS] , double isoValue , int* edges);
+	static int AddEdgeIndices( unsigned char mcIndex , int* edges);
 };
 
 class MarchingCubes
@@ -99,8 +113,8 @@ class MarchingCubes
 	static void SetVertex(int e,const float values[Cube::CORNERS],float iso);
 	static unsigned char GetFaceIndex( const float values[Cube::CORNERS] , float iso , int faceIndex );
 
-	static unsigned char GetFaceIndex( unsigned char mcIndex , int faceIndex );
 public:
+	static unsigned char GetFaceIndex( unsigned char mcIndex , int faceIndex );
 	static double Interpolate(double v1,double v2);
 	static float Interpolate(float v1,float v2);
 	const static unsigned int MAX_TRIANGLES=5;

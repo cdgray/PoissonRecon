@@ -126,11 +126,6 @@ cmdLineReadable
 cmdLineInt
 	Depth( "depth" , 8 ) ,
 	CGDepth( "cgDepth" , 0 ) ,
-#if BROODED_SLICES
-	IsoDivide( "isoDivide" , 6 ) ,
-#else // !BROODED_SLICES
-	IsoDivide( "isoDivide" , 7 ) ,
-#endif // BROODED_SLICES
 	KernelDepth( "kernelDepth" ) ,
 	AdaptiveExponent( "adaptiveExp" , 1 ) ,
 	Iters( "iters" , 8 ) ,
@@ -144,14 +139,14 @@ cmdLineInt
 cmdLineFloat
 	SamplesPerNode( "samplesPerNode" , 1.f ) ,
 	Scale( "scale" , 1.1f ) ,
-	CGSolverAccuracy( "cgAccuracy" , float(1e-3) ) ,
+	CSSolverAccuracy( "cgAccuracy" , float(1e-3) ) ,
 	PointWeight( "pointWeight" , 4.f );
 
 
 cmdLineReadable* params[] =
 {
 	&In , &Depth , &Out , &XForm ,
-	&IsoDivide , &Scale , &Verbose , &CGSolverAccuracy , &NoComments , &Double ,
+	&Scale , &Verbose , &CSSolverAccuracy , &NoComments , &Double ,
 	&KernelDepth , &SamplesPerNode , &Confidence , &NormalWeights , &NonManifold , &PolygonMesh , &ASCII , &ShowResidual , &VoxelDepth ,
 	&PointWeight , &VoxelGrid , &Threads , &MaxSolveDepth ,
 	&AdaptiveExponent , &BoundaryType ,
@@ -178,24 +173,14 @@ void ShowUsage(char* ex)
 	printf( "\t\t Running at depth d corresponds to solving on a 2^d x 2^d x 2^d\n" );
 	printf( "\t\t voxel grid.\n" );
 
-#if 0
-	printf( "\t[--%s <minimum depth>=%d]\n" , MinDepth.name , MinDepth.value );
-	printf( "\t\t This flag specifies the coarsest depth at which the system is to be solved.\n" );
-#endif
-
 	printf( "\t[--%s <full depth>=%d]\n" , FullDepth.name , FullDepth.value );
 	printf( "\t\t This flag specifies the depth up to which the octree should be complete.\n" );
 
 	printf( "\t[--%s <depth at which to extract the voxel grid>=<%s>]\n" , VoxelDepth.name , Depth.name );
-	printf( "\t\t Specifies the depth at which to sample the implicit function onto\n" );
-	printf( "\t\t a regular voxel grid.\n" );
 
 	printf( "\t[--%s <conjugate-gradients depth>=%d]\n" , CGDepth.name , CGDepth.value );
 	printf( "\t\t The depth up to which a conjugate-gradients solver should be used.\n");
 
-	printf( "\t[--%s <iso-surface extraction depth>=%d]\n" , IsoDivide.name , IsoDivide.value );
-	printf( "\t\t Specifies the depth at which a blocking iso-surface extraction should be used\n" );
-		
 	printf( "\t[--%s <scale factor>=%f]\n" , Scale.name , Scale.value );
 	printf( "\t\t Specifies the factor of the bounding cube that the input\n" );
 	printf( "\t\t samples should fit into.\n" );
@@ -209,7 +194,7 @@ void ShowUsage(char* ex)
 	printf( "\t\t given when defining the (screened) Poisson system.\n" );
 
 	printf( "\t[--%s <iterations>=%d]\n" , Iters.name , Iters.value );
-	printf( "\t\t This flag specifies the number of Gauss-Seidel iterations to be run at each level.\n" );
+	printf( "\t\t This flag specifies the (maximum if CG) number of solver iterations.\n" );
 
 	printf( "\t[--%s <num threads>=%d]\n" , Threads.name , Threads.value );
 	printf( "\t\t This parameter specifies the number of threads across which\n" );
@@ -236,7 +221,10 @@ void ShowUsage(char* ex)
 	printf( "\t\t rather than triangles.\n" );
 
 #if 0
-	printf( "\t[--%s <cg solver accuracy>=%g]\n" , CGSolverAccuracy.name , CGSolverAccuracy.value );
+	printf( "\t[--%s <minimum depth>=%d]\n" , MinDepth.name , MinDepth.value );
+	printf( "\t\t This flag specifies the coarsest depth at which the system is to be solved.\n" );
+
+	printf( "\t[--%s <cg solver accuracy>=%g]\n" , CSSolverAccuracy.name , CSSolverAccuracy.value );
 	printf( "\t\t This flag specifies the accuracy cut-off to be used for CG.\n" );
 
 	printf( "\t[--%s <adaptive weighting exponent>=%d]\n", AdaptiveExponent.name , AdaptiveExponent.value );
@@ -251,14 +239,18 @@ void ShowUsage(char* ex)
 
 	printf( "\t[--%s]\n" , Density.name );
 	printf( "\t\t If this flag is enabled, the sampling density is written out with the vertices.\n" );
+
 #if 0
 	printf( "\t[--%s]\n" , ASCII.name );
 	printf( "\t\t If this flag is enabled, the output file is written out in ASCII format.\n" );
+	
 	printf( "\t[--%s]\n" , NoComments.name );
 	printf( "\t\t If this flag is enabled, the output file will not include comments.\n" );
+#endif
+	
 	printf( "\t[--%s]\n" , Double.name );
 	printf( "\t\t If this flag is enabled, the reconstruction will be performed with double-precision floats.\n" );
-#endif
+
 	printf( "\t[--%s]\n" , Verbose.name );
 	printf( "\t\t If this flag is enabled, the progress of the reconstructor will be output to STDOUT.\n" );
 }
@@ -293,7 +285,7 @@ int Execute( int argc , char* argv[] )
 	else xForm = XForm4x4< Real >::Identity();
 	iXForm = xForm.inverse();
 
-	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 6.0)\n" );
+	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 6.1)\n" );
 	char str[1024];
 	for( int i=0 ; i<paramNum ; i++ )
 		if( params[i]->set )
@@ -316,7 +308,7 @@ int Execute( int argc , char* argv[] )
 	}
 	if( !MaxSolveDepth.set ) MaxSolveDepth.value = Depth.value;
 	
-	OctNode< TreeNodeData< Real > , Real >::SetAllocator( MEMORY_ALLOCATOR_BLOCK_SIZE );
+	OctNode< TreeNodeData >::SetAllocator( MEMORY_ALLOCATOR_BLOCK_SIZE );
 
 	t=Time();
 	int kernelDepth = KernelDepth.set ?  KernelDepth.value : Depth.value-2;
@@ -328,50 +320,12 @@ int Execute( int argc , char* argv[] )
 
 	double maxMemoryUsage;
 	t=Time() , tree.maxMemoryUsage=0;
-	typename Octree< Real , Degree >::PointInfo* pointInfo = new Octree< Real , Degree >::PointInfo();
-	typename Octree< Real , Degree >::NormalInfo* normalInfo = new Octree< Real , Degree >::NormalInfo();
+	typename Octree< Real , Degree >::PointInfo* pointInfo = new typename Octree< Real , Degree >::PointInfo();
+	typename Octree< Real , Degree >::NormalInfo* normalInfo = new typename Octree< Real , Degree >::NormalInfo();
 	std::vector< Real >* kernelDensityWeights = new std::vector< Real >();
 	std::vector< Real >* centerWeights = new std::vector< Real >();
-	int pointCount = tree.template SetTree< float >( In.value , MinDepth.value , Depth.value , FullDepth.value , kernelDepth , Real(SamplesPerNode.value) , Scale.value , Confidence.set , NormalWeights.set , PointWeight.value , AdaptiveExponent.value ,
-		*pointInfo ,
-		*normalInfo ,
-		*kernelDensityWeights , *centerWeights ,
-		BoundaryType.value , xForm );
+	int pointCount = tree.template SetTree< float >( In.value , MinDepth.value , Depth.value , FullDepth.value , kernelDepth , Real(SamplesPerNode.value) , Scale.value , Confidence.set , NormalWeights.set , PointWeight.value , AdaptiveExponent.value , *pointInfo , *normalInfo , *kernelDensityWeights , *centerWeights , BoundaryType.value , xForm , Complete.set );
 	if( !Density.set ) delete kernelDensityWeights , kernelDensityWeights = NULL;
-	{
-		std::vector< int > indexMap;
-		if( Complete.set ) tree.MakeComplete( &indexMap );
-		else tree.ClipTree( *normalInfo ) , tree.Finalize( IsoDivide.value , &indexMap );
-		{
-			std::vector< int > temp = pointInfo->pointIndices;
-			pointInfo->pointIndices.resize( indexMap.size() );
-			for( int i=0 ; i<indexMap.size() ; i++ )
-				if( indexMap[i]<temp.size() ) (*pointInfo).pointIndices[i] = temp[ indexMap[i] ];
-				else                          (*pointInfo).pointIndices[i] = -1;
-		}
-		{
-			std::vector< int > temp = normalInfo->normalIndices;
-			normalInfo->normalIndices.resize( indexMap.size() );
-			for( int i=0 ; i<indexMap.size() ; i++ )
-				if( indexMap[i]<temp.size() ) (*normalInfo).normalIndices[i] = temp[ indexMap[i] ];
-				else                          (*normalInfo).normalIndices[i] = -1;
-		}
-		{
-			std::vector< Real > temp = *centerWeights;
-			centerWeights->resize( indexMap.size() );
-			for( int i=0 ; i<indexMap.size() ; i++ )
-				if( indexMap[i]<temp.size() ) (*centerWeights)[i] = temp[ indexMap[i] ];
-				else                          (*centerWeights)[i] = (Real)0;
-		}
-		if( kernelDensityWeights )
-		{
-			std::vector< Real > temp = *kernelDensityWeights;
-			kernelDensityWeights->resize( indexMap.size() );
-			for( int i=0 ; i<indexMap.size() ; i++ )
-				if( indexMap[i]<temp.size() ) (*kernelDensityWeights)[i] = temp[ indexMap[i] ];
-				else                          (*kernelDensityWeights)[i] = (Real)0;
-		}
-	}
 
 	DumpOutput2( comments[commentNum++] , "#             Tree set in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
 	DumpOutput( "Input Points: %d\n" , pointCount );
@@ -380,15 +334,15 @@ int Execute( int argc , char* argv[] )
 
 	maxMemoryUsage = tree.maxMemoryUsage;
 	t=Time() , tree.maxMemoryUsage=0;
-	Real* constraints = tree.SetLaplacianConstraints( *normalInfo );
+	Pointer( Real ) constraints = tree.SetLaplacianConstraints( *normalInfo );
 	delete normalInfo;
 	DumpOutput2( comments[commentNum++] , "#      Constraints set in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
 	DumpOutput( "Memory Usage: %.3f MB\n" , float( MemoryInfo::Usage())/(1<<20) );
 	maxMemoryUsage = std::max< double >( maxMemoryUsage , tree.maxMemoryUsage );
 
 	t=Time() , tree.maxMemoryUsage=0;
-	Pointer( Real ) solution = tree.SolveSystem( *pointInfo , constraints , ShowResidual.set , Iters.value , MaxSolveDepth.value , CGDepth.value , CGSolverAccuracy.value );
-	FreePointer( pointInfo );
+	Pointer( Real ) solution = tree.SolveSystem( *pointInfo , constraints , ShowResidual.set , Iters.value , MaxSolveDepth.value , CGDepth.value , CSSolverAccuracy.value );
+	delete pointInfo;
 	FreePointer( constraints );
 	DumpOutput2( comments[commentNum++] , "# Linear system solved in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
 	DumpOutput( "Memory Usage: %.3f MB\n" , float( MemoryInfo::Usage() )/(1<<20) );
@@ -411,7 +365,7 @@ int Execute( int argc , char* argv[] )
 		else
 		{
 			int res;
-			Pointer( Real ) values = tree.GetSolutionGrid( solution , res , isoValue , VoxelDepth.value );
+			Pointer( Real ) values = tree.Evaluate( solution , res , isoValue , VoxelDepth.value );
 			fwrite( &res , sizeof(int) , 1 , fp );
 			if( sizeof(Real)==sizeof(float) ) fwrite( values , sizeof(float) , res*res*res , fp );
 			else
@@ -430,7 +384,7 @@ int Execute( int argc , char* argv[] )
 	if( Out.set )
 	{
 		t = Time() , tree.maxMemoryUsage = 0;
-		tree.GetMCIsoTriangles( kernelDensityWeights , solution , isoValue , IsoDivide.value , &mesh , 0 , 1 , !NonManifold.set , PolygonMesh.set );
+		tree.GetMCIsoSurface( kernelDensityWeights ? GetPointer( *kernelDensityWeights ) : NullPointer< Real >() , solution , isoValue , mesh , true , !NonManifold.set , PolygonMesh.set );
 		if( PolygonMesh.set ) DumpOutput2( comments[commentNum++] , "#         Got polygons in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
 		else                  DumpOutput2( comments[commentNum++] , "#        Got triangles in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
 		maxMemoryUsage = std::max< double >( maxMemoryUsage , tree.maxMemoryUsage );
@@ -463,6 +417,23 @@ inline double to_seconds( const FILETIME& ft )
 
 int main( int argc , char* argv[] )
 {
+#if defined(WIN32) && defined(MAX_MEMORY_GB)
+	if( MAX_MEMORY_GB>0 )
+	{
+		SIZE_T peakMemory = 1;
+		peakMemory <<= 30;
+		peakMemory *= MAX_MEMORY_GB;
+		printf( "Limiting memory usage to %.2f GB\n" , float( peakMemory>>30 ) );
+		HANDLE h = CreateJobObject( NULL , NULL );
+		AssignProcessToJobObject( h , GetCurrentProcess() );
+
+		JOBOBJECT_EXTENDED_LIMIT_INFORMATION jeli = { 0 };
+		jeli.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_JOB_MEMORY;
+		jeli.JobMemoryLimit = peakMemory;
+		if( !SetInformationJobObject( h , JobObjectExtendedLimitInformation , &jeli , sizeof( jeli ) ) )
+			fprintf( stderr , "Failed to set memory limit\n" );
+	}
+#endif // defined(WIN32) && defined(MAX_MEMORY_GB)
 	double t = Time();
 
 	cmdLineParse( argc-1 , &argv[1] , sizeof(params)/sizeof(cmdLineReadable*) , params , 1 );

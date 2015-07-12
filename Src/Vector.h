@@ -99,8 +99,8 @@ protected:
 };
 
 #if ARRAY_DEBUG
-template< class C >      Array< C > GetPointer(       Vector< C >& v ){ return      Array< C >::FromPointer( &v[0] , v.size() ); }
-template< class C > ConstArray< C > GetPointer( const Vector< C >& v ){ return ConstArray< C >::FromPointer( &v[0] , v.size() ); }
+template< class C >      Array< C > GetPointer(       Vector< C >& v ){ return      Array< C >::FromPointer( &v[0] , v.Dimensions() ); }
+template< class C > ConstArray< C > GetPointer( const Vector< C >& v ){ return ConstArray< C >::FromPointer( &v[0] , v.Dimensions() ); }
 #else // !ARRAY_DEBUG
 template< class C >       C* GetPointer(       Vector< C >& v ){ return &v[0]; }
 template< class C > const C* GetPointer( const Vector< C >& v ){ return &v[0]; }

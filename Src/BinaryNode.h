@@ -32,7 +32,6 @@ DAMAGE.
 #define MSVC_2010_FIX 1
 
 
-template<class Real>
 class BinaryNode
 {
 public:
@@ -44,14 +43,14 @@ public:
 	static inline int CornerIndex( int depth , int offSet ) { return (1<<depth)+offSet+depth; }
 
 	static inline int CornerIndex( int maxDepth , int depth , int offSet , int forwardCorner ){ return (offSet+forwardCorner)<<(maxDepth-depth); }
-	static inline Real CornerIndexPosition(int index,int maxDepth){ return Real(index)/(1<<maxDepth); }
-	static inline Real Width(int depth){ return Real(1.0/(1<<depth)); }
-	static inline void CenterAndWidth( int depth , int offset , Real& center , Real& width )
+	template< class Real > static inline Real CornerIndexPosition(int index,int maxDepth){ return Real(index)/(1<<maxDepth); }
+	template< class Real > static inline Real Width(int depth){ return Real(1.0/(1<<depth)); }
+	template< class Real > static inline void CenterAndWidth( int depth , int offset , Real& center , Real& width )
 	  {
 	    width=Real (1.0/(1<<depth) );
 	    center=Real((0.5+offset)*width);
 	  }
-	static inline void CenterAndWidth( int idx , Real& center , Real& width )
+	template< class Real > static inline void CenterAndWidth( int idx , Real& center , Real& width )
 	  {
 	    int depth , offset;
 	    DepthAndOffset( idx , depth , offset );

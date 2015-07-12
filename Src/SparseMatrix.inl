@@ -1379,8 +1379,8 @@ void SparseSymmetricMatrix< T >::getDiagonal( Vector< T2 >& diagonal , int threa
 	for( int i=0 ; i<SparseMatrix< T >::rows ; i++ )
 	{
 		T2 d = 0.;
-		ConstPointer( MatrixEntry< T > ) start = m_ppElements[i];
-		ConstPointer( MatrixEntry< T > ) end = start + rowSizes[i];
+		ConstPointer( MatrixEntry< T > ) start = SparseMatrix< T >::m_ppElements[i];
+		ConstPointer( MatrixEntry< T > ) end = start + SparseMatrix< T >::rowSizes[i];
 		ConstPointer( MatrixEntry< T > ) e;
 		for( e=start ; e!=end ; e++ ) if( e->N==i ) d += e->Value;
 		diagonal[i] = d * T2(2);
