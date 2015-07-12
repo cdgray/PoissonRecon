@@ -177,7 +177,7 @@ void Octree< Real , Degree >::GetMCIsoSurface( ConstPointer( Real ) kernelDensit
 	for( int d=maxDepth ; d>=_minDepth ; d-- )
 	{
 		// Copy edges from finer
-		CopyFinerSliceIsoEdgeKeys( d , 0 , slabValues , threads );
+		if( d<maxDepth ) CopyFinerSliceIsoEdgeKeys( d , 0 , slabValues , threads );
 		SetSliceIsoCorners( solution , GetPointer( coarseSolution ) , isoValue , d , 0 , slabValues , evaluator , vStencils[d].stencil , vStencils[d].stencils , nStencils[d].stencil , nStencils[d].stencils , threads );
 		SetSliceIsoVertices( kernelDensityWeights , isoValue , d , 0 , vertexOffset , mesh , slabValues , threads );
 		SetSliceIsoEdges( d , 0 , slabValues , threads );

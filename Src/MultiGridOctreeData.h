@@ -157,7 +157,7 @@ public:
 		const SquareFaceIndices& faceIndices( int idx ) const;
 	protected:
 		std::vector< int > _cMap , _eMap , _fMap;
-		friend SortedTreeNodes;
+		friend class SortedTreeNodes;
 	};
 	struct XSliceTableData
 	{
@@ -177,7 +177,7 @@ public:
 		const SquareEdgeIndices& faceIndices( int idx ) const;
 	protected:
 		std::vector< int > _eMap , _fMap;
-		friend SortedTreeNodes;
+		friend class SortedTreeNodes;
 	};
 	void setSliceTableData (  SliceTableData& sData , int depth , int offset , int threads ) const;
 	void setXSliceTableData( XSliceTableData& sData , int depth , int offset , int threads ) const;

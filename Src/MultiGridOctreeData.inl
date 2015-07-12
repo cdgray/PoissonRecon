@@ -428,7 +428,9 @@ int Octree< Real , Degree >::SetTree( char* fileName , int minDepth , int maxDep
 	// Otherwise the points are in the [0,1]^3 cube.
 	// However, for Neumann constraints, the function at depth 0 is constant so the system matrix is zero if there
 	// is no screening.
+#if 0
 	else if( _boundaryType==1 && !_constrainValues ) minDepth = std::max< int >( minDepth , 1 );
+#endif
 
 	_fData.set( maxDepth , _boundaryType );
 
