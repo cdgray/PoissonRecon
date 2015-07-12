@@ -27,34 +27,30 @@ DAMAGE.
 */
 #include "Geometry.h"
 
-//////////////
-// MeshData //
-//////////////
-
 ///////////////////
 // CoredMeshData //
 ///////////////////
-const int CoredMeshData::IN_CORE_FLAG[]={1,2,4};
+
+TriangulationEdge::TriangulationEdge(void){pIndex[0]=pIndex[1]=tIndex[0]=tIndex[1]=-1;}
+TriangulationTriangle::TriangulationTriangle(void){eIndex[0]=eIndex[1]=eIndex[2]=-1;}
 
 /////////////////////////
 // CoredVectorMeshData //
 /////////////////////////
-CoredVectorMeshData::CoredVectorMeshData(void){oocPointIndex=triangleIndex=0;}
-void CoredVectorMeshData::resetIterator(void){oocPointIndex=triangleIndex=0;}
+CoredVectorMeshData::CoredVectorMeshData( void ) { oocPointIndex = polygonIndex = 0; }
+void CoredVectorMeshData::resetIterator ( void ) { oocPointIndex = polygonIndex = 0; }
 int CoredVectorMeshData::addOutOfCorePoint(const Point3D<float>& p){
 	oocPoints.push_back(p);
 	return int(oocPoints.size())-1;
 }
-int CoredVectorMeshData::addTriangle(const TriangleIndex& t,const int& coreFlag){
-	TriangleIndex tt;
-	if(coreFlag & CoredMeshData::IN_CORE_FLAG[0])	{tt.idx[0]= t.idx[0];}
-	else											{tt.idx[0]=-t.idx[0]-1;}
-	if(coreFlag & CoredMeshData::IN_CORE_FLAG[1])	{tt.idx[1]= t.idx[1];}
-	else											{tt.idx[1]=-t.idx[1]-1;}
-	if(coreFlag & CoredMeshData::IN_CORE_FLAG[2])	{tt.idx[2]= t.idx[2];}
-	else											{tt.idx[2]=-t.idx[2]-1;}
-	triangles.push_back(tt);
-	return int(triangles.size())-1;
+int CoredVectorMeshData::addPolygon( const std::vector< CoredVertexIndex >& vertices )
+{
+	std::vector< int > polygon( vertices.size() );
+	for( int i=0 ; i<vertices.size() ; i++ ) 
+		if( vertices[i].inCore ) polygon[i] =  vertices[i].idx;
+		else                     polygon[i] = -vertices[i].idx-1;
+	polygons.push_back( polygon );
+	return int( polygons.size() )-1;
 }
 int CoredVectorMeshData::nextOutOfCorePoint(Point3D<float>& p){
 	if(oocPointIndex<int(oocPoints.size())){
@@ -63,19 +59,18 @@ int CoredVectorMeshData::nextOutOfCorePoint(Point3D<float>& p){
 	}
 	else{return 0;}
 }
-int CoredVectorMeshData::nextTriangle(TriangleIndex& t,int& inCoreFlag){
-	inCoreFlag=0;
-	if(triangleIndex<int(triangles.size())){
-		t=triangles[triangleIndex++];
-		if(t.idx[0]<0)	{t.idx[0]=-t.idx[0]-1;}
-		else			{inCoreFlag|=CoredMeshData::IN_CORE_FLAG[0];}
-		if(t.idx[1]<0)	{t.idx[1]=-t.idx[1]-1;}
-		else			{inCoreFlag|=CoredMeshData::IN_CORE_FLAG[1];}
-		if(t.idx[2]<0)	{t.idx[2]=-t.idx[2]-1;}
-		else			{inCoreFlag|=CoredMeshData::IN_CORE_FLAG[2];}
+int CoredVectorMeshData::nextPolygon( std::vector< CoredVertexIndex >& vertices )
+{
+	if( polygonIndex<int( polygons.size() ) )
+	{
+		std::vector< int >& polygon = polygons[ polygonIndex++ ];
+		vertices.resize( polygon.size() );
+		for( int i=0 ; i<polygon.size() ; i++ )
+			if( polygon[i]<0 ) vertices[i].idx = -polygon[i]-1 , vertices[i].inCore = false;
+			else               vertices[i].idx =  polygon[i]   , vertices[i].inCore = true;
 		return 1;
 	}
-	else{return 0;}
+	else return 0;
 }
 int CoredVectorMeshData::outOfCorePointCount(void){return int(oocPoints.size());}
-int CoredVectorMeshData::triangleCount(void){return int(triangles.size());}
+int CoredVectorMeshData::polygonCount( void ) { return int( polygons.size() ); }

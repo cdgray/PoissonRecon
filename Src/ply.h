@@ -220,6 +220,6 @@ extern int equal_strings(char *, char *);
 #include "Geometry.h"
 #include <vector>
 
-int PlyWriteTriangles(char* fileName,CoredMeshData* mesh,int file_type,const Point3D<float>& translate,const float& scale,char** comments=NULL,const int& commentNum=0);
+int PlyWritePolygons(char* fileName,CoredMeshData* mesh,int file_type,const Point3D<float>& translate,const float& scale,char** comments=NULL,const int& commentNum=0);
 int PlyDefaultFileType(void);
 #endif /* !__PLY_H__ */

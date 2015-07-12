@@ -1,8 +1,8 @@
 # /********************************************************************************************
 # * File:		Makefile
-# * Author:		$LastChangedBy: bolitho $
-# * Revision:		$Revision: 82 $
-# * Last Updated:	$LastChangedDate: 2005-09-26 07:31:28 -0400 (Mon, 26 Sep 2005) $
+# * Author:		$LastChangedBy: matthew $
+# * Revision:	$Revision: 233 $
+# * Last Updated:	$LastChangedDate: 2006-11-10 15:03:28 -0500 (Fri, 10 Nov 2006) $
 # ********************************************************************************************/
 
 TARGET=PoissonRecon
@@ -14,10 +14,10 @@ LFLAGS +=
 CFLAGS_DEBUG = -DDEBUG -g3
 LFLAGS_DEBUG =
 
-CFLAGS_RELEASE = -O3 -DRELEASE -pg
-LFLAGS_RELEASE = -O3 -pg
+CFLAGS_RELEASE = -O3 -DRELEASE -funroll-loops -ffast-math
+LFLAGS_RELEASE = -O3 
 
-SRC = ./
+SRC = Src/
 BIN = Bin/Linux/
 INCLUDE = /usr/include/
 

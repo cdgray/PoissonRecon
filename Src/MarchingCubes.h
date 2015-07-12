@@ -95,10 +95,13 @@ class MarchingCubes{
 	static float Interpolate(const float& v1,const float& v2);
 	static void SetVertex(const int& e,const float values[Cube::CORNERS],const float& iso);
 	static int GetFaceIndex(const float values[Cube::CORNERS],const float& iso,const int& faceIndex);
+
+	static int GetFaceIndex(const int& mcIndex,const int& faceIndex);
 public:
 	const static int MAX_TRIANGLES=5;
 	static const int edgeMask[1<<Cube::CORNERS];
 	static const int triangles[1<<Cube::CORNERS][3*MAX_TRIANGLES+1];
+	static const int cornerMap[Cube::CORNERS];
 	static double vertexList[Cube::EDGES][3];
 
 	static int AddTriangleIndices(const int& mcIndex,int* triangles);
@@ -116,5 +119,10 @@ public:
 	static int HasRoots(const float v[Cube::CORNERS],const float& isoValue,const int& faceIndex);
 	static int AddTriangles(const float v[Cube::CORNERS],const float& isoValue,Triangle* triangles);
 	static int AddTriangleIndices(const float v[Cube::CORNERS],const float& isoValue,int* triangles);
+
+	static int IsAmbiguous(const int& mcIndex,const int& faceIndex);
+	static int HasRoots(const int& mcIndex);
+	static int HasFaceRoots(const int& mcIndex,const int& faceIndex);
+	static int HasEdgeRoots(const int& mcIndex,const int& edgeIndex);
 };
 #endif //MARCHING_CUBES_INCLUDED

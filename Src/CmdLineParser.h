@@ -49,12 +49,14 @@ class cmdLineInt : public cmdLineReadable {
 public:
 	int value;
 	cmdLineInt();
+	cmdLineInt(const int& v);
 	int read(char** argv,int argc);
 };
 class cmdLineFloat : public cmdLineReadable {
 public:
 	float value;
 	cmdLineFloat();
+	cmdLineFloat(const float& f);
 	int read(char** argv,int argc);
 };
 class cmdLineString : public cmdLineReadable {
@@ -64,10 +66,20 @@ public:
 	~cmdLineString();
 	int read(char** argv,int argc);
 };
+class cmdLinePoint3D : public cmdLineReadable {
+public:
+	Point3D<float> value;
+	cmdLinePoint3D();
+	cmdLinePoint3D(const Point3D<float>& v);
+	cmdLinePoint3D(const float& v0,const float& v1,const float& v2);
+	int read(char** argv,int argc);
+};
 
 // This reads the arguments in argc, matches them against "names" and sets
 // the values of "r" appropriately. Parameters start with "--"
 void cmdLineParse(int argc, char **argv,char** names,int num,cmdLineReadable** r,
 				  int dumpError=1);
+
+char* GetFileExtension(char* fileName);
 
 #endif // CMD_LINE_PARSER_INCLUDED

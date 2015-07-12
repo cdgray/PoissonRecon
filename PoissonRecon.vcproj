@@ -65,88 +65,7 @@
 				Name="VCLinkerTool"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
-				GenerateMapFile="true"
 				SubSystem="1"
-				OptimizeReferences="1"
-				EnableCOMDATFolding="1"
-				TargetMachine="1"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCWebDeploymentTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Release|Win32"
-			OutputDirectory="$(SolutionDir)Bin\$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="$(SolutionDir)\Obj\$(PlatformName)\$(ConfigurationName)"
-			ConfigurationType="1"
-			CharacterSet="2"
-			WholeProgramOptimization="1"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_DEPRECATE"
-				RuntimeLibrary="2"
-				EnableEnhancedInstructionSet="2"
-				FloatingPointModel="2"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				Detect64BitPortabilityProblems="true"
-				DebugInformationFormat="3"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				LinkIncremental="1"
-				GenerateDebugInformation="true"
-				SubSystem="1"
-				LargeAddressAware="2"
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -224,6 +143,82 @@
 				GenerateDebugInformation="true"
 				SubSystem="1"
 				TargetMachine="17"
+			/>
+			<Tool
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
+			<Tool
+				Name="VCWebDeploymentTool"
+			/>
+			<Tool
+				Name="VCPostBuildEventTool"
+			/>
+		</Configuration>
+		<Configuration
+			Name="Release|Win32"
+			OutputDirectory="$(SolutionDir)Bin\$(PlatformName)\$(ConfigurationName)"
+			IntermediateDirectory="$(SolutionDir)\Obj\$(PlatformName)\$(ConfigurationName)"
+			ConfigurationType="1"
+			CharacterSet="2"
+			WholeProgramOptimization="1"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+			/>
+			<Tool
+				Name="VCCLCompilerTool"
+				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_DEPRECATE"
+				RuntimeLibrary="2"
+				UsePrecompiledHeader="0"
+				WarningLevel="3"
+				Detect64BitPortabilityProblems="true"
+				DebugInformationFormat="3"
+			/>
+			<Tool
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
+			<Tool
+				Name="VCLinkerTool"
+				LinkIncremental="1"
+				GenerateDebugInformation="true"
+				SubSystem="1"
+				LargeAddressAware="2"
+				OptimizeReferences="2"
+				EnableCOMDATFolding="2"
+				TargetMachine="1"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -336,35 +331,35 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\CmdLineParser.cpp"
+				RelativePath=".\Src\CmdLineParser.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\Factor.cpp"
+				RelativePath=".\Src\Factor.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\Geometry.cpp"
+				RelativePath=".\Src\Geometry.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\MarchingCubes.cpp"
+				RelativePath=".\Src\MarchingCubes.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\MultiGridOctest.cpp"
+				RelativePath=".\Src\MultiGridOctest.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\ply.cpp"
+				RelativePath=".\Src\ply.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\plyfile.cpp"
+				RelativePath=".\Src\plyfile.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\Time.cpp"
+				RelativePath=".\Src\Time.cpp"
 				>
 			</File>
 		</Filter>
@@ -374,67 +369,75 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\Allocator.h"
+				RelativePath=".\Src\Allocator.h"
 				>
 			</File>
 			<File
-				RelativePath=".\BinaryNode.h"
+				RelativePath=".\Src\BinaryNode.h"
 				>
 			</File>
 			<File
-				RelativePath=".\CmdLineParser.h"
+				RelativePath=".\Src\CmdLineParser.h"
 				>
 			</File>
 			<File
-				RelativePath=".\Factor.h"
+				RelativePath=".\Src\Factor.h"
 				>
 			</File>
 			<File
-				RelativePath=".\FunctionData.h"
+				RelativePath=".\Src\Flags.h"
 				>
 			</File>
 			<File
-				RelativePath=".\Geometry.h"
+				RelativePath=".\Src\FunctionData.h"
 				>
 			</File>
 			<File
-				RelativePath=".\MarchingCubes.h"
+				RelativePath=".\Src\Geometry.h"
 				>
 			</File>
 			<File
-				RelativePath=".\MemoryUsage.h"
+				RelativePath=".\Src\Hash.h"
 				>
 			</File>
 			<File
-				RelativePath=".\MultiGridOctreeData.h"
+				RelativePath=".\Src\MarchingCubes.h"
 				>
 			</File>
 			<File
-				RelativePath=".\Octree.h"
+				RelativePath=".\Src\MemoryUsage.h"
 				>
 			</File>
 			<File
-				RelativePath=".\ply.h"
+				RelativePath=".\Src\MultiGridOctreeData.h"
 				>
 			</File>
 			<File
-				RelativePath=".\Polynomial.h"
+				RelativePath=".\Src\Octree.h"
 				>
 			</File>
 			<File
-				RelativePath=".\PPolynomial.h"
+				RelativePath=".\Src\ply.h"
 				>
 			</File>
 			<File
-				RelativePath=".\SparseMatrix.h"
+				RelativePath=".\Src\Polynomial.h"
 				>
 			</File>
 			<File
-				RelativePath=".\Time.h"
+				RelativePath=".\Src\PPolynomial.h"
 				>
 			</File>
 			<File
-				RelativePath=".\Vector.h"
+				RelativePath=".\Src\SparseMatrix.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Src\Time.h"
+				>
+			</File>
+			<File
+				RelativePath=".\Src\Vector.h"
 				>
 			</File>
 		</Filter>
@@ -444,35 +447,35 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
-				RelativePath=".\FunctionData.inl"
+				RelativePath=".\Src\FunctionData.inl"
 				>
 			</File>
 			<File
-				RelativePath=".\Geometry.inl"
+				RelativePath=".\Src\Geometry.inl"
 				>
 			</File>
 			<File
-				RelativePath=".\MultiGridOctreeData.inl"
+				RelativePath=".\Src\MultiGridOctreeData.inl"
 				>
 			</File>
 			<File
-				RelativePath=".\Octree.inl"
+				RelativePath=".\Src\Octree.inl"
 				>
 			</File>
 			<File
-				RelativePath=".\Polynomial.inl"
+				RelativePath=".\Src\Polynomial.inl"
 				>
 			</File>
 			<File
-				RelativePath=".\PPolynomial.inl"
+				RelativePath=".\Src\PPolynomial.inl"
 				>
 			</File>
 			<File
-				RelativePath=".\SparseMatrix.inl"
+				RelativePath=".\Src\SparseMatrix.inl"
 				>
 			</File>
 			<File
-				RelativePath=".\Vector.inl"
+				RelativePath=".\Src\Vector.inl"
 				>
 			</File>
 		</Filter>

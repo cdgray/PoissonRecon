@@ -26,6 +26,7 @@ ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF S
 DAMAGE.
 */
 
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,6 +46,7 @@ int cmdLineReadable::read(char**,int){
 }
 
 cmdLineInt::cmdLineInt(void){value=0;}
+cmdLineInt::cmdLineInt(const int& v){value=v;}
 int cmdLineInt::read(char** argv,int argc){
 	if(argc>0){
 		value=atoi(argv[0]);
@@ -54,6 +56,7 @@ int cmdLineInt::read(char** argv,int argc){
 	else{return 0;}
 }
 cmdLineFloat::cmdLineFloat(void){value=0;}
+cmdLineFloat::cmdLineFloat(const float& v){value=v;}
 int cmdLineFloat::read(char** argv,int argc){
 	if(argc>0){
 		value=(float)atof(argv[0]);
@@ -78,6 +81,40 @@ int cmdLineString::read(char** argv,int argc){
 	}
 	else{return 0;}
 }
+cmdLinePoint3D::cmdLinePoint3D(void){value.coords[0]=value.coords[1]=value.coords[2]=0;}
+cmdLinePoint3D::cmdLinePoint3D(const Point3D<float>& v){value.coords[0]=v.coords[0];value.coords[1]=v.coords[1];value.coords[2]=v.coords[2];}
+cmdLinePoint3D::cmdLinePoint3D(const float& v0,const float& v1,const float& v2){value.coords[0]=v0;value.coords[1]=v1;value.coords[2]=v2;}
+int cmdLinePoint3D::read(char** argv,int argc){
+	if(argc>2){
+		value.coords[0]=(float)atof(argv[0]);
+		value.coords[1]=(float)atof(argv[1]);
+		value.coords[2]=(float)atof(argv[2]);
+		set=1;
+		return 3;
+	}
+	else{return 0;}
+}
+
+char* GetFileExtension(char* fileName){
+	char* fileNameCopy;
+	char* ext=NULL;
+	char* temp;
+
+	fileNameCopy=new char[strlen(fileName)+1];
+	assert(fileNameCopy);
+	strcpy(fileNameCopy,fileName);
+	temp=strtok(fileNameCopy,".");
+	while(temp!=NULL){
+		if(ext!=NULL){delete[] ext;}
+		ext=new char[strlen(temp)+1];
+		assert(ext);
+		strcpy(ext,temp);
+		temp=strtok(NULL,".");
+	}
+	delete[] fileNameCopy;
+	return ext;
+}
+
 void cmdLineParse(int argc, char **argv,char** names,int num,cmdLineReadable** readable,
 				  int dumpError){
 	int i,j;

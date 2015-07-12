@@ -28,11 +28,22 @@ DAMAGE.
 
 #ifndef GEOMETRY_INCLUDED
 #define GEOMETRY_INCLUDED
+
 #include <math.h>
 #include <vector>
+#include "Hash.h"
+
+template<class Real>
+Real Random(void);
 
 template<class Real>
 struct Point3D{Real coords[3];};
+
+template<class Real>
+Point3D<Real> RandomBallPoint(void);
+
+template<class Real>
+Point3D<Real> RandomSpherePoint(void);
 
 template<class Real>
 double Length(const Point3D<Real>& p);
@@ -91,6 +102,7 @@ public:
 	char inCore;
 
 	int operator == (const CoredPointIndex& cpi) const {return (index==cpi.index) && (inCore==cpi.inCore);};
+	int operator != (const CoredPointIndex& cpi) const {return (index!=cpi.index) || (inCore!=cpi.inCore);};
 };
 class EdgeIndex{
 public:
@@ -104,44 +116,109 @@ class TriangleIndex{
 public:
 	int idx[3];
 };
+
+class TriangulationEdge
+{
+public:
+	TriangulationEdge(void);
+	int pIndex[2];
+	int tIndex[2];
+};
+
+class TriangulationTriangle
+{
+public:
+	TriangulationTriangle(void);
+	int eIndex[3];
+};
+
+template<class Real>
+class Triangulation
+{
+public:
+
+	std::vector<Point3D<Real> >		points;
+	std::vector<TriangulationEdge>				edges;
+	std::vector<TriangulationTriangle>			triangles;
+
+	int factor(const int& tIndex,int& p1,int& p2,int& p3);
+	double area(void);
+	double area(const int& tIndex);
+	double area(const int& p1,const int& p2,const int& p3);
+	int flipMinimize(const int& eIndex);
+	int addTriangle(const int& p1,const int& p2,const int& p3);
+
+protected:
+	hash_map<long long,int> edgeMap;
+	static long long EdgeIndex(const int& p1,const int& p2);
+	double area(const Triangle& t);
+};
+
+
 template<class Real>
 void EdgeCollapse(const Real& edgeRatio,std::vector<TriangleIndex>& triangles,std::vector< Point3D<Real> >& positions,std::vector<Point3D<Real> >* normals);
 template<class Real>
 void TriangleCollapse(const Real& edgeRatio,std::vector<TriangleIndex>& triangles,std::vector<Point3D<Real> >& positions,std::vector<Point3D<Real> >* normals);
 
-class CoredMeshData{
+struct CoredVertexIndex
+{
+	int idx;
+	bool inCore;
+};
+class CoredMeshData
+{
 public:
 	std::vector<Point3D<float> > inCorePoints;
-	const static int IN_CORE_FLAG[3];
-	virtual void resetIterator(void)=0;
+	virtual void resetIterator( void ) = 0;
 
-	virtual int addOutOfCorePoint(const Point3D<float>& p)=0;
-	virtual int addTriangle(const TriangleIndex& t,const int& icFlag=(IN_CORE_FLAG[0] | IN_CORE_FLAG[1] | IN_CORE_FLAG[2]))=0;
+	virtual int addOutOfCorePoint( const Point3D<float>& p ) = 0;
+	virtual int addPolygon( const std::vector< CoredVertexIndex >& vertices ) = 0;
 
-	virtual int nextOutOfCorePoint(Point3D<float>& p)=0;
-	virtual int nextTriangle(TriangleIndex& t,int& inCoreFlag)=0;
+	virtual int nextOutOfCorePoint( Point3D<float>& p )=0;
+	virtual int nextPolygon( std::vector< CoredVertexIndex >& vertices ) = 0;
 
 	virtual int outOfCorePointCount(void)=0;
-	virtual int triangleCount(void)=0;
+	virtual int polygonCount( void ) = 0;
 };
 
-class CoredVectorMeshData : public CoredMeshData{
+class CoredVectorMeshData : public CoredMeshData
+{
 	std::vector<Point3D<float> > oocPoints;
-	std::vector<TriangleIndex> triangles;
-	int oocPointIndex,triangleIndex;
+	std::vector< std::vector< int > > polygons;
+	int polygonIndex;
+	int oocPointIndex;
 public:
 	CoredVectorMeshData::CoredVectorMeshData(void);
 
 	void resetIterator(void);
 
 	int addOutOfCorePoint(const Point3D<float>& p);
-	int addTriangle(const TriangleIndex& t,const int& inCoreFlag=(CoredMeshData::IN_CORE_FLAG[0] | CoredMeshData::IN_CORE_FLAG[1] | CoredMeshData::IN_CORE_FLAG[2]));
+	int addPolygon( const std::vector< CoredVertexIndex >& vertices );
 
-	int nextOutOfCorePoint(Point3D<float>& p);
-	int nextTriangle(TriangleIndex& t,int& inCoreFlag);
+	int nextOutOfCorePoint( Point3D<float>& p );
+	int nextPolygon( std::vector< CoredVertexIndex >& vertices );
 
 	int outOfCorePointCount(void);
-	int triangleCount(void);
+	int polygonCount( void );
+};
+class CoredFileMeshData : public CoredMeshData
+{
+	FILE *oocPointFile , *polygonFile;
+	int oocPoints , polygons;
+public:
+	CoredFileMeshData(void);
+	~CoredFileMeshData(void);
+
+	void resetIterator(void);
+
+	int addOutOfCorePoint(const Point3D<float>& p);
+	int addPolygon( const std::vector< CoredVertexIndex >& vertices );
+
+	int nextOutOfCorePoint(Point3D<float>& p);
+	int nextPolygon( std::vector< CoredVertexIndex >& vertices );
+
+	int outOfCorePointCount(void);
+	int polygonCount( void );
 };
 #include "Geometry.inl"
 

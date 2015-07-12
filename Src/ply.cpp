@@ -69,36 +69,38 @@ static PlyProperty face_props[] = {
 
 int PlyDefaultFileType(void){return PLY_ASCII;}
 
-int PlyWriteTriangles(char* fileName,CoredMeshData* mesh,int file_type,const Point3D<float>& translate,const float& scale,char** comments,const int& commentNum){
+int PlyWritePolygons( char* fileName , CoredMeshData* mesh , int file_type , const Point3D<float>& translate , const float& scale , char** comments , const int& commentNum )
+{
 	int i;
 	int nr_vertices=int(mesh->outOfCorePointCount()+mesh->inCorePoints.size());
-	int nr_faces=mesh->triangleCount();
+	int nr_faces=mesh->polygonCount();
 	float version;
 	PlyFile *ply = ply_open_for_writing(fileName, 2, elem_names, file_type, &version);
-	if (!ply){return 0;}
+	if( !ply ) return 0;
 
 	mesh->resetIterator();
 	
 	//
 	// describe vertex and face properties
 	//
-	ply_element_count(ply, "vertex", nr_vertices);
-	ply_describe_property(ply, "vertex", &vert_props[0]);
-	ply_describe_property(ply, "vertex", &vert_props[1]);
-	ply_describe_property(ply, "vertex", &vert_props[2]);
+	ply_element_count( ply , "vertex" , nr_vertices );
+	ply_describe_property( ply , "vertex" , &vert_props[0] );
+	ply_describe_property( ply , "vertex" , &vert_props[1] );
+	ply_describe_property( ply , "vertex" , &vert_props[2] );
 	
-	ply_element_count(ply, "face", nr_faces);
-	ply_describe_property(ply, "face", &face_props[0]);
+	ply_element_count( ply , "face" , nr_faces );
+	ply_describe_property( ply , "face" , &face_props[0] );
 	
 	// Write in the comments
-	for(i=0;i<commentNum;i++){ply_put_comment(ply,comments[i]);}
+	for( i=0 ; i<commentNum ; i++ ) ply_put_comment( ply , comments[i] );
 
-	ply_header_complete(ply);
+	ply_header_complete( ply );
 	
 	// write vertices
-	ply_put_element_setup(ply, "vertex");
-	Point3D<float> p;
-	for (i=0; i < int(mesh->inCorePoints.size()); i++){
+	ply_put_element_setup( ply , "vertex" );
+	Point3D< float > p;
+	for( i=0 ; i<int( mesh->inCorePoints.size() ) ; i++ )
+	{
 		PlyVertex ply_vertex;
 		p=mesh->inCorePoints[i];
 		ply_vertex.x = p.coords[0]*scale+translate.coords[0];
@@ -106,7 +108,8 @@ int PlyWriteTriangles(char* fileName,CoredMeshData* mesh,int file_type,const Poi
 		ply_vertex.z = p.coords[2]*scale+translate.coords[2];
 		ply_put_element(ply, (void *) &ply_vertex);
 	}
-	for (i=0; i < mesh->outOfCorePointCount(); i++){
+	for( i=0; i<mesh->outOfCorePointCount() ; i++ )
+	{
 		PlyVertex ply_vertex;
 		mesh->nextOutOfCorePoint(p);
 		ply_vertex.x = p.coords[0]*scale+translate.coords[0];
@@ -116,25 +119,24 @@ int PlyWriteTriangles(char* fileName,CoredMeshData* mesh,int file_type,const Poi
 	}  // for, write vertices
 	
 	// write faces
-	TriangleIndex tIndex;
-	int inCoreFlag;
-	ply_put_element_setup(ply, "face");
-	for (i=0; i < nr_faces; i++){
+	std::vector< CoredVertexIndex > polygon;
+	ply_put_element_setup( ply , "face" );
+	for( i=0 ; i<nr_faces ; i++ )
+	{
 		//
 		// create and fill a struct that the ply code can handle
 		//
 		PlyFace ply_face;
-		ply_face.nr_vertices = 3;
-		ply_face.vertices = new int[3];
-		mesh->nextTriangle(tIndex,inCoreFlag);
-		if(!(inCoreFlag & CoredMeshData::IN_CORE_FLAG[0])){tIndex.idx[0]+=int(mesh->inCorePoints.size());}
-		if(!(inCoreFlag & CoredMeshData::IN_CORE_FLAG[1])){tIndex.idx[1]+=int(mesh->inCorePoints.size());}
-		if(!(inCoreFlag & CoredMeshData::IN_CORE_FLAG[2])){tIndex.idx[2]+=int(mesh->inCorePoints.size());}
-		for(int j=0; j < 3; j++){ply_face.vertices[j] = tIndex.idx[j];}
-		ply_put_element(ply, (void *) &ply_face);
+		mesh->nextPolygon( polygon );
+		ply_face.nr_vertices = polygon.size();
+		ply_face.vertices = new int[ polygon.size() ];
+		for( int i=0 ; i<polygon.size() ; i++ )
+			if( polygon[i].inCore ) ply_face.vertices[i] = polygon[i].idx;
+			else                    ply_face.vertices[i] = polygon[i].idx + int( mesh->inCorePoints.size() );
+		ply_put_element( ply, (void *) &ply_face );
 		delete[] ply_face.vertices;
 	}  // for, write faces
 	
-	ply_close(ply);
+	ply_close( ply );
 	return 1;
 }

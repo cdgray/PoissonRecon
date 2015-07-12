@@ -89,6 +89,7 @@ int OctNode<NodeData,Real>::initChildren(void){
 	if(!children){
 		fprintf(stderr,"Failed to initialize children in OctNode::initChildren\n");
 		exit(0);
+		return 0;
 	}
 	int d,off[3];
 	depthAndOffset(d,off);
@@ -159,7 +160,7 @@ template <class NodeData,class Real>
 int OctNode<NodeData,Real>::maxDepth(void) const{
 	if(!children){return 0;}
 	else{
-		int c=0,d;
+		int c,d;
 		for(int i=0;i<Cube::CORNERS;i++){
 			d=children[i].maxDepth();
 			if(!i || d>c){c=d;}
@@ -272,8 +273,7 @@ template <class NodeData,class Real>
 template<class NodeAdjacencyFunction>
 void OctNode<NodeData,Real>::processNodeNodes(OctNode* node,NodeAdjacencyFunction* F,const int& processCurrent){
 	if(processCurrent){F->Function(this,node);}
-	if(!children){return;}
-	__processNodeNodes(node,F);
+	if(children){__processNodeNodes(node,F);}
 }
 template <class NodeData,class Real>
 template<class NodeAdjacencyFunction>
@@ -299,7 +299,11 @@ template <class NodeData,class Real>
 template<class NodeAdjacencyFunction>
 void OctNode<NodeData,Real>::processNodeCorners(OctNode* node,NodeAdjacencyFunction* F,const int& cIndex,const int& processCurrent){
 	if(processCurrent){F->Function(this,node);}
-	if(children){children[cIndex].__processNodeCorners(node,F,cIndex);}
+	OctNode<NodeData,Real>* temp=this;
+	while(temp->children){
+		temp=&temp->children[cIndex];
+		F->Function(temp,node);
+	}
 }
 template <class NodeData,class Real>
 template<class NodeAdjacencyFunction>
@@ -323,47 +327,41 @@ void OctNode<NodeData,Real>::__processNodeNodes(OctNode* node,NodeAdjacencyFunct
 }
 template <class NodeData,class Real>
 template<class NodeAdjacencyFunction>
-void OctNode<NodeData,Real>::__processNodeCorners(OctNode* node,NodeAdjacencyFunction* F,const int& cIndex){
-	F->Function(this,node);
-	if(children){children[cIndex].__processNodeCorners(node,F,cIndex);}
-}
-template <class NodeData,class Real>
-template<class NodeAdjacencyFunction>
 void OctNode<NodeData,Real>::__processNodeEdges(OctNode* node,NodeAdjacencyFunction* F,const int& cIndex1,const int& cIndex2){
-	F->Function(this,node);
-	if(children){
-		children[cIndex1].__processNodeEdges(node,F,cIndex1,cIndex2);
-		children[cIndex2].__processNodeEdges(node,F,cIndex1,cIndex2);
-	}
+	F->Function(&children[cIndex1],node);
+	F->Function(&children[cIndex2],node);
+	if(children[cIndex1].children){children[cIndex1].__processNodeEdges(node,F,cIndex1,cIndex2);}
+	if(children[cIndex2].children){children[cIndex2].__processNodeEdges(node,F,cIndex1,cIndex2);}
 }
 template <class NodeData,class Real>
 template<class NodeAdjacencyFunction>
 void OctNode<NodeData,Real>::__processNodeFaces(OctNode* node,NodeAdjacencyFunction* F,const int& cIndex1,const int& cIndex2,const int& cIndex3,const int& cIndex4){
-	F->Function(this,node);
-	if(children){
-		children[cIndex1].__processNodeFaces(node,F,cIndex1,cIndex2,cIndex3,cIndex4);
-		children[cIndex2].__processNodeFaces(node,F,cIndex1,cIndex2,cIndex3,cIndex4);
-		children[cIndex3].__processNodeFaces(node,F,cIndex1,cIndex2,cIndex3,cIndex4);
-		children[cIndex4].__processNodeFaces(node,F,cIndex1,cIndex2,cIndex3,cIndex4);
-	}
+	F->Function(&children[cIndex1],node);
+	F->Function(&children[cIndex2],node);
+	F->Function(&children[cIndex3],node);
+	F->Function(&children[cIndex4],node);
+	if(children[cIndex1].children){children[cIndex1].__processNodeFaces(node,F,cIndex1,cIndex2,cIndex3,cIndex4);}
+	if(children[cIndex2].children){children[cIndex2].__processNodeFaces(node,F,cIndex1,cIndex2,cIndex3,cIndex4);}
+	if(children[cIndex3].children){children[cIndex3].__processNodeFaces(node,F,cIndex1,cIndex2,cIndex3,cIndex4);}
+	if(children[cIndex4].children){children[cIndex4].__processNodeFaces(node,F,cIndex1,cIndex2,cIndex3,cIndex4);}
 }
 template<class NodeData,class Real>
 template<class NodeAdjacencyFunction>
-void OctNode<NodeData,Real>::ProcessNodeAdjacentNodes(OctNode* node1,const Real& radius1,OctNode* node2,const Real& radius2,NodeAdjacencyFunction* F,const int& processCurrent){
-	Point3D<Real> c1,c2;
-	Real w1,w2;
+void OctNode<NodeData,Real>::ProcessNodeAdjacentNodes(const int& maxDepth,OctNode* node1,const int& width1,OctNode* node2,const int& width2,NodeAdjacencyFunction* F,const int& processCurrent){
+	int c1[3],c2[3],w1,w2;
+	node1->centerIndex(maxDepth+1,c1);
+	node2->centerIndex(maxDepth+1,c2);
+	w1=node1->width(maxDepth+1);
+	w2=node2->width(maxDepth+1);
 
-	node1->centerAndWidth(c1,w1);
-	node2->centerAndWidth(c2,w2);
-	ProcessNodeAdjacentNodes(c1.coords[0]-c2.coords[0],c1.coords[1]-c2.coords[1],c1.coords[2]-c2.coords[2],node1,radius1*w1,node2,radius2*w2,w2,F,processCurrent);
+	ProcessNodeAdjacentNodes(c1[0]-c2[0],c1[1]-c2[1],c1[2]-c2[2],node1,(width1*w1)>>1,node2,(width2*w2)>>1,w2,F,processCurrent);
 }
 template<class NodeData,class Real>
 template<class NodeAdjacencyFunction>
-void OctNode<NodeData,Real>::ProcessNodeAdjacentNodes(const Real& dx,const Real& dy,const Real& dz,
-													  OctNode<NodeData,Real>* node1,const Real& radius1,
-													  OctNode<NodeData,Real>* node2,const Real& radius2,const Real& width2,
-													  NodeAdjacencyFunction* F,const int& processCurrent)
-{
+void OctNode<NodeData,Real>::ProcessNodeAdjacentNodes(const int& dx,const int& dy,const int& dz,
+													  OctNode<NodeData,Real>* node1,const int& radius1,
+													  OctNode<NodeData,Real>* node2,const int& radius2,const int& width2,
+													  NodeAdjacencyFunction* F,const int& processCurrent){
 	if(!Overlap(dx,dy,dz,radius1+radius2)){return;}
 	if(processCurrent){F->Function(node2,node1);}
 	if(!node2->children){return;}
@@ -371,18 +369,20 @@ void OctNode<NodeData,Real>::ProcessNodeAdjacentNodes(const Real& dx,const Real&
 }
 template<class NodeData,class Real>
 template<class TerminatingNodeAdjacencyFunction>
-void OctNode<NodeData,Real>::ProcessTerminatingNodeAdjacentNodes(OctNode* node1,const Real& radius1,OctNode* node2,const Real& radius2,TerminatingNodeAdjacencyFunction* F,const int& processCurrent){
-	Point3D<Real> c1,c2;
-	Real w1,w2;
-	node1->centerAndWidth(c1,w1);
-	node2->centerAndWidth(c2,w2);
-	ProcessTerminatingNodeAdjacentNodes(c1.coords[0]-c2.coords[0],c1.coords[1]-c2.coords[1],c1.coords[2]-c2.coords[2],node1,radius1*w1,node2,radius2*w2,w2,F,processCurrent);
+void OctNode<NodeData,Real>::ProcessTerminatingNodeAdjacentNodes(const int& maxDepth,OctNode* node1,const int& width1,OctNode* node2,const int& width2,TerminatingNodeAdjacencyFunction* F,const int& processCurrent){
+	int c1[3],c2[3],w1,w2;
+	node1->centerIndex(maxDepth+1,c1);
+	node2->centerIndex(maxDepth+1,c2);
+	w1=node1->width(maxDepth+1);
+	w2=node2->width(maxDepth+1);
+
+	ProcessTerminatingNodeAdjacentNodes(c1[0]-c2[0],c1[1]-c2[1],c1[2]-c2[2],node1,(width1*w1)>>1,node2,(width2*w2)>>1,w2,F,processCurrent);
 }
 template<class NodeData,class Real>
 template<class TerminatingNodeAdjacencyFunction>
-void OctNode<NodeData,Real>::ProcessTerminatingNodeAdjacentNodes(const Real& dx,const Real& dy,const Real& dz,
-																 OctNode<NodeData,Real>* node1,const Real& radius1,
-																 OctNode<NodeData,Real>* node2,const Real& radius2,const Real& width2,
+void OctNode<NodeData,Real>::ProcessTerminatingNodeAdjacentNodes(const int& dx,const int& dy,const int& dz,
+																 OctNode<NodeData,Real>* node1,const int& radius1,
+																 OctNode<NodeData,Real>* node2,const int& radius2,const int& width2,
 																 TerminatingNodeAdjacencyFunction* F,const int& processCurrent)
 {
 	if(!Overlap(dx,dy,dz,radius1+radius2)){return;}
@@ -392,60 +392,43 @@ void OctNode<NodeData,Real>::ProcessTerminatingNodeAdjacentNodes(const Real& dx,
 }
 template<class NodeData,class Real>
 template<class PointAdjacencyFunction>
-void OctNode<NodeData,Real>::ProcessPointAdjacentNodes(const Point3D<Real>& center1,OctNode* node2,const Real& radius2,PointAdjacencyFunction* F,const int& processCurrent){
-	Point3D<Real> c2;
-	Real w2;
-	node2->centerAndWidth(c2,w2);
-	ProcessPointAdjacentNodes(center1.coords[0]-c2.coords[0],center1.coords[1]-c2.coords[1],center1.coords[2]-c2.coords[2],node2,radius2*w2,w2,F,processCurrent);
+void OctNode<NodeData,Real>::ProcessPointAdjacentNodes(const int& maxDepth,const int c1[3],OctNode* node2,const int& width2,PointAdjacencyFunction* F,const int& processCurrent){
+	int c2[3],w2;
+	node2->centerIndex(maxDepth+1,c2);
+	w2=node2->width(maxDepth+1);
+	ProcessPointAdjacentNodes(c1[0]-c2[0],c1[1]-c2[1],c1[2]-c2[2],node2,(width2*w2)>>1,w2,F,processCurrent);
 }
 template<class NodeData,class Real>
 template<class PointAdjacencyFunction>
-void OctNode<NodeData,Real>::ProcessPointAdjacentNodes(const Real& dx,const Real& dy,const Real& dz,
-													   OctNode<NodeData,Real>* node2,const Real& radius2,const Real& width2,
+void OctNode<NodeData,Real>::ProcessPointAdjacentNodes(const int& dx,const int& dy,const int& dz,
+													   OctNode<NodeData,Real>* node2,const int& radius2,const int& width2,
 													   PointAdjacencyFunction* F,const int& processCurrent)
 {
 	if(!Overlap(dx,dy,dz,radius2)){return;}
 	if(processCurrent){F->Function(node2);}
 	if(!node2->children){return;}
-	__ProcessPointAdjacentNodes(-dx,-dy,-dz,node2,radius2,width2/2,F);
-}
-template<class NodeData,class Real>
-template<class PointAdjacencyFunction>
-void OctNode<NodeData,Real>::ProcessPointAdjacentNodes(const Point3D<Real>& center1,const Real& radius1,OctNode* node2,const Real& radius2,PointAdjacencyFunction* F,const int& processCurrent){
-	Point3D<Real> c2;
-	Real w2;
-	node2->centerAndWidth(c2,w2);
-	ProcessPointAdjacentNodes(center1.coords[0]-c2.coords[0],center1.coords[1]-c2.coords[1],center1.coords[2]-c2.coords[2],radius1,node2,radius2*w2,w2,F,processCurrent);
-}
-template<class NodeData,class Real>
-template<class PointAdjacencyFunction>
-void OctNode<NodeData,Real>::ProcessPointAdjacentNodes(const Real& dx,const Real& dy,const Real& dz,
-													   const Real& radius1,
-													   OctNode<NodeData,Real>* node2,const Real& radius2,const Real& width2,
-													   PointAdjacencyFunction* F,const int& processCurrent)
-{
-	if(!Overlap(dx,dy,dz,radius1+radius2)){return;}
-	if(processCurrent){F->Function(node2);}
-	if(!node2->children){return;}
-	__ProcessPointAdjacentNodes(-dx,-dy,-dz,radius1,node2,radius2,width2/2,F);
+	__ProcessPointAdjacentNodes(-dx,-dy,-dz,node2,radius2,width2>>1,F);
 }
 template<class NodeData,class Real>
 template<class NodeAdjacencyFunction>
-void OctNode<NodeData,Real>::ProcessFixedDepthNodeAdjacentNodes(OctNode<NodeData,Real>* node1,const Real& radius1,
-																OctNode<NodeData,Real>* node2,const Real& radius2,
+void OctNode<NodeData,Real>::ProcessFixedDepthNodeAdjacentNodes(const int& maxDepth,
+																OctNode<NodeData,Real>* node1,const int& width1,
+																OctNode<NodeData,Real>* node2,const int& width2,
 																const int& depth,NodeAdjacencyFunction* F,const int& processCurrent)
 {
-	Point3D<Real> c1,c2;
-	Real w1,w2;
-	node1->centerAndWidth(c1,w1);
-	node2->centerAndWidth(c2,w2);
-	ProcessFixedDepthNodeAdjacentNodes(c1.coords[0]-c2.coords[0],c1.coords[1]-c2.coords[1],c1.coords[2]-c2.coords[2],node1,radius1*w1,node2,radius2*w2,w2,depth,F,processCurrent);
+	int c1[3],c2[3],w1,w2;
+	node1->centerIndex(maxDepth+1,c1);
+	node2->centerIndex(maxDepth+1,c2);
+	w1=node1->width(maxDepth+1);
+	w2=node2->width(maxDepth+1);
+
+	ProcessFixedDepthNodeAdjacentNodes(c1[0]-c2[0],c1[1]-c2[1],c1[2]-c2[2],node1,(width1*w1)>>1,node2,(width2*w2)>>1,w2,depth,F,processCurrent);
 }
 template<class NodeData,class Real>
 template<class NodeAdjacencyFunction>
-void OctNode<NodeData,Real>::ProcessFixedDepthNodeAdjacentNodes(const Real& dx,const Real& dy,const Real& dz,
-																OctNode<NodeData,Real>* node1,const Real& radius1,
-																OctNode<NodeData,Real>* node2,const Real& radius2,const Real& width2,
+void OctNode<NodeData,Real>::ProcessFixedDepthNodeAdjacentNodes(const int& dx,const int& dy,const int& dz,
+																OctNode<NodeData,Real>* node1,const int& radius1,
+																OctNode<NodeData,Real>* node2,const int& radius2,const int& width2,
 																const int& depth,NodeAdjacencyFunction* F,const int& processCurrent)
 {
 	int d=node2->depth();
@@ -457,49 +440,50 @@ void OctNode<NodeData,Real>::ProcessFixedDepthNodeAdjacentNodes(const Real& dx,c
 		__ProcessFixedDepthNodeAdjacentNodes(-dx,-dy,-dz,node1,radius1,node2,radius2,width2/2,depth-1,F);
 	}
 }
-
 template<class NodeData,class Real>
 template<class NodeAdjacencyFunction>
-void OctNode<NodeData,Real>::ProcessMaxDepthNodeAdjacentNodes(OctNode<NodeData,Real>* node1,const Real& radius1,
-															  OctNode<NodeData,Real>* node2,const Real& radius2,
+void OctNode<NodeData,Real>::ProcessMaxDepthNodeAdjacentNodes(const int& maxDepth,
+															  OctNode<NodeData,Real>* node1,const int& width1,
+															  OctNode<NodeData,Real>* node2,const int& width2,
 															  const int& depth,NodeAdjacencyFunction* F,const int& processCurrent)
 {
-	Point3D<Real> c1,c2;
-	Real w1,w2;
-	node1->centerAndWidth(c1,w1);
-	node2->centerAndWidth(c2,w2);
-	ProcessMaxDepthNodeAdjacentNodes(c1.coords[0]-c2.coords[0],c1.coords[1]-c2.coords[1],c1.coords[2]-c2.coords[2],node1,radius1*w1,node2,radius2*w2,w2,depth,F,processCurrent);
+	int c1[3],c2[3],w1,w2;
+	node1->centerIndex(maxDepth+1,c1);
+	node2->centerIndex(maxDepth+1,c2);
+	w1=node1->width(maxDepth+1);
+	w2=node2->width(maxDepth+1);
+	ProcessMaxDepthNodeAdjacentNodes(c1[0]-c2[0],c1[1]-c2[1],c1[2]-c2[2],node1,(width1*w1)>>1,node2,(width2*w2)>>1,w2,depth,F,processCurrent);
 }
 template<class NodeData,class Real>
 template<class NodeAdjacencyFunction>
-void OctNode<NodeData,Real>::ProcessMaxDepthNodeAdjacentNodes(const Real& dx,const Real& dy,const Real& dz,
-															  OctNode<NodeData,Real>* node1,const Real& radius1,
-															  OctNode<NodeData,Real>* node2,const Real& radius2,const Real& width2,
+void OctNode<NodeData,Real>::ProcessMaxDepthNodeAdjacentNodes(const int& dx,const int& dy,const int& dz,
+															  OctNode<NodeData,Real>* node1,const int& radius1,
+															  OctNode<NodeData,Real>* node2,const int& radius2,const int& width2,
 															  const int& depth,NodeAdjacencyFunction* F,const int& processCurrent)
 {
 	int d=node2->depth();
 	if(d>depth){return;}
 	if(!Overlap(dx,dy,dz,radius1+radius2)){return;}
 	if(processCurrent){F->Function(node2,node1);}
-	if(d<depth && node2->children){__ProcessMaxDepthNodeAdjacentNodes(-dx,-dy,-dz,node1,radius1,node2,radius2,width2/2,depth-1,F);}
+	if(d<depth && node2->children){__ProcessMaxDepthNodeAdjacentNodes(-dx,-dy,-dz,node1,radius1,node2,radius2,width2>>1,depth-1,F);}
 }
 template <class NodeData,class Real>
 template<class NodeAdjacencyFunction>
-void OctNode<NodeData,Real>::__ProcessNodeAdjacentNodes(const Real& dx,const Real& dy,const Real& dz,
-														OctNode* node1,const Real& radius1,
-														OctNode* node2,const Real& radius2,const Real& cWidth2,
+void OctNode<NodeData,Real>::__ProcessNodeAdjacentNodes(const int& dx,const int& dy,const int& dz,
+														OctNode* node1,const int& radius1,
+														OctNode* node2,const int& radius2,const int& cWidth2,
 														NodeAdjacencyFunction* F)
 {
-	Real cWidth=cWidth2/2;
-	Real radius=radius2/2;
+	int cWidth=cWidth2>>1;
+	int radius=radius2>>1;
 	int o=ChildOverlap(dx,dy,dz,radius1+radius,cWidth);
 	if(o){
-		Real dx1=dx-cWidth;
-		Real dx2=dx+cWidth;
-		Real dy1=dy-cWidth;
-		Real dy2=dy+cWidth;
-		Real dz1=dz-cWidth;
-		Real dz2=dz+cWidth;
+		int dx1=dx-cWidth;
+		int dx2=dx+cWidth;
+		int dy1=dy-cWidth;
+		int dy2=dy+cWidth;
+		int dz1=dz-cWidth;
+		int dz2=dz+cWidth;
 		if(o&  1){F->Function(&node2->children[0],node1);if(node2->children[0].children){__ProcessNodeAdjacentNodes(dx1,dy1,dz1,node1,radius1,&node2->children[0],radius,cWidth,F);}}
 		if(o&  2){F->Function(&node2->children[1],node1);if(node2->children[1].children){__ProcessNodeAdjacentNodes(dx2,dy1,dz1,node1,radius1,&node2->children[1],radius,cWidth,F);}}
 		if(o&  4){F->Function(&node2->children[2],node1);if(node2->children[2].children){__ProcessNodeAdjacentNodes(dx1,dy2,dz1,node1,radius1,&node2->children[2],radius,cWidth,F);}}
@@ -512,21 +496,21 @@ void OctNode<NodeData,Real>::__ProcessNodeAdjacentNodes(const Real& dx,const Rea
 }
 template <class NodeData,class Real>
 template<class TerminatingNodeAdjacencyFunction>
-void OctNode<NodeData,Real>::__ProcessTerminatingNodeAdjacentNodes(const Real& dx,const Real& dy,const Real& dz,
-																   OctNode* node1,const Real& radius1,
-																   OctNode* node2,const Real& radius2,const Real& cWidth2,
+void OctNode<NodeData,Real>::__ProcessTerminatingNodeAdjacentNodes(const int& dx,const int& dy,const int& dz,
+																   OctNode* node1,const int& radius1,
+																   OctNode* node2,const int& radius2,const int& cWidth2,
 																   TerminatingNodeAdjacencyFunction* F)
 {
-	Real cWidth=cWidth2/2;
-	Real radius=radius2/2;
+	int cWidth=cWidth2>>1;
+	int radius=radius2>>1;
 	int o=ChildOverlap(dx,dy,dz,radius1+radius,cWidth);
 	if(o){
-		Real dx1=dx-cWidth;
-		Real dx2=dx+cWidth;
-		Real dy1=dy-cWidth;
-		Real dy2=dy+cWidth;
-		Real dz1=dz-cWidth;
-		Real dz2=dz+cWidth;
+		int dx1=dx-cWidth;
+		int dx2=dx+cWidth;
+		int dy1=dy-cWidth;
+		int dy2=dy+cWidth;
+		int dz1=dz-cWidth;
+		int dz2=dz+cWidth;
 		if(o&  1){if(F->Function(&node2->children[0],node1) && node2->children[0].children){__ProcessTerminatingNodeAdjacentNodes(dx1,dy1,dz1,node1,radius1,&node2->children[0],radius,cWidth,F);}}
 		if(o&  2){if(F->Function(&node2->children[1],node1) && node2->children[1].children){__ProcessTerminatingNodeAdjacentNodes(dx2,dy1,dz1,node1,radius1,&node2->children[1],radius,cWidth,F);}}
 		if(o&  4){if(F->Function(&node2->children[2],node1) && node2->children[2].children){__ProcessTerminatingNodeAdjacentNodes(dx1,dy2,dz1,node1,radius1,&node2->children[2],radius,cWidth,F);}}
@@ -537,23 +521,22 @@ void OctNode<NodeData,Real>::__ProcessTerminatingNodeAdjacentNodes(const Real& d
 		if(o&128){if(F->Function(&node2->children[7],node1) && node2->children[7].children){__ProcessTerminatingNodeAdjacentNodes(dx2,dy2,dz2,node1,radius1,&node2->children[7],radius,cWidth,F);}}
 	}
 }
-
 template <class NodeData,class Real>
 template<class PointAdjacencyFunction>
-void OctNode<NodeData,Real>::__ProcessPointAdjacentNodes(const Real& dx,const Real& dy,const Real& dz,
-														 OctNode* node2,const Real& radius2,const Real& cWidth2,
+void OctNode<NodeData,Real>::__ProcessPointAdjacentNodes(const int& dx,const int& dy,const int& dz,
+														 OctNode* node2,const int& radius2,const int& cWidth2,
 														 PointAdjacencyFunction* F)
 {
-	Real cWidth=cWidth2/2;
-	Real radius=radius2/2;
+	int cWidth=cWidth2>>1;
+	int radius=radius2>>1;
 	int o=ChildOverlap(dx,dy,dz,radius,cWidth);
 	if(o){
-		Real dx1=dx-cWidth;
-		Real dx2=dx+cWidth;
-		Real dy1=dy-cWidth;
-		Real dy2=dy+cWidth;
-		Real dz1=dz-cWidth;
-		Real dz2=dz+cWidth;
+		int dx1=dx-cWidth;
+		int dx2=dx+cWidth;
+		int dy1=dy-cWidth;
+		int dy2=dy+cWidth;
+		int dz1=dz-cWidth;
+		int dz2=dz+cWidth;
 		if(o&  1){F->Function(&node2->children[0]);if(node2->children[0].children){__ProcessPointAdjacentNodes(dx1,dy1,dz1,&node2->children[0],radius,cWidth,F);}}
 		if(o&  2){F->Function(&node2->children[1]);if(node2->children[1].children){__ProcessPointAdjacentNodes(dx2,dy1,dz1,&node2->children[1],radius,cWidth,F);}}
 		if(o&  4){F->Function(&node2->children[2]);if(node2->children[2].children){__ProcessPointAdjacentNodes(dx1,dy2,dz1,&node2->children[2],radius,cWidth,F);}}
@@ -565,49 +548,22 @@ void OctNode<NodeData,Real>::__ProcessPointAdjacentNodes(const Real& dx,const Re
 	}
 }
 template <class NodeData,class Real>
-template<class PointAdjacencyFunction>
-void OctNode<NodeData,Real>::__ProcessPointAdjacentNodes(const Real& dx,const Real& dy,const Real& dz,
-														 const Real& radius1,
-														 OctNode* node2,const Real& radius2,const Real& cWidth2,
-														 PointAdjacencyFunction* F)
-{
-	Real cWidth=cWidth2/2;
-	Real radius=radius2/2;
-	int o=ChildOverlap(dx,dy,dz,radius1+radius,cWidth);
-	if(o){
-		Real dx1=dx-cWidth;
-		Real dx2=dx+cWidth;
-		Real dy1=dy-cWidth;
-		Real dy2=dy+cWidth;
-		Real dz1=dz-cWidth;
-		Real dz2=dz+cWidth;
-		if(o&  1){F->Function(&node2->children[0]);if(node2->children[0].children){__ProcessPointAdjacentNodes(dx1,dy1,dz1,radius1,&node2->children[0],radius,cWidth,F);}}
-		if(o&  2){F->Function(&node2->children[1]);if(node2->children[1].children){__ProcessPointAdjacentNodes(dx2,dy1,dz1,radius1,&node2->children[1],radius,cWidth,F);}}
-		if(o&  4){F->Function(&node2->children[2]);if(node2->children[2].children){__ProcessPointAdjacentNodes(dx1,dy2,dz1,radius1,&node2->children[2],radius,cWidth,F);}}
-		if(o&  8){F->Function(&node2->children[3]);if(node2->children[3].children){__ProcessPointAdjacentNodes(dx2,dy2,dz1,radius1,&node2->children[3],radius,cWidth,F);}}
-		if(o& 16){F->Function(&node2->children[4]);if(node2->children[4].children){__ProcessPointAdjacentNodes(dx1,dy1,dz2,radius1,&node2->children[4],radius,cWidth,F);}}
-		if(o& 32){F->Function(&node2->children[5]);if(node2->children[5].children){__ProcessPointAdjacentNodes(dx2,dy1,dz2,radius1,&node2->children[5],radius,cWidth,F);}}
-		if(o& 64){F->Function(&node2->children[6]);if(node2->children[6].children){__ProcessPointAdjacentNodes(dx1,dy2,dz2,radius1,&node2->children[6],radius,cWidth,F);}}
-		if(o&128){F->Function(&node2->children[7]);if(node2->children[7].children){__ProcessPointAdjacentNodes(dx2,dy2,dz2,radius1,&node2->children[7],radius,cWidth,F);}}
-	}
-}
-template <class NodeData,class Real>
 template<class NodeAdjacencyFunction>
-void OctNode<NodeData,Real>::__ProcessFixedDepthNodeAdjacentNodes(const Real& dx,const Real& dy,const Real& dz,
-																  OctNode* node1,const Real& radius1,
-																  OctNode* node2,const Real& radius2,const Real& cWidth2,
+void OctNode<NodeData,Real>::__ProcessFixedDepthNodeAdjacentNodes(const int& dx,const int& dy,const int& dz,
+																  OctNode* node1,const int& radius1,
+																  OctNode* node2,const int& radius2,const int& cWidth2,
 																  const int& depth,NodeAdjacencyFunction* F)
 {
-	Real cWidth=cWidth2/2;
-	Real radius=radius2/2;
+	int cWidth=cWidth2>>1;
+	int radius=radius2>>1;
 	int o=ChildOverlap(dx,dy,dz,radius1+radius,cWidth);
 	if(o){
-		Real dx1=dx-cWidth;
-		Real dx2=dx+cWidth;
-		Real dy1=dy-cWidth;
-		Real dy2=dy+cWidth;
-		Real dz1=dz-cWidth;
-		Real dz2=dz+cWidth;
+		int dx1=dx-cWidth;
+		int dx2=dx+cWidth;
+		int dy1=dy-cWidth;
+		int dy2=dy+cWidth;
+		int dz1=dz-cWidth;
+		int dz2=dz+cWidth;
 		if(node2->depth()==depth){
 			if(o&  1){F->Function(&node2->children[0],node1);}
 			if(o&  2){F->Function(&node2->children[1],node1);}
@@ -632,21 +588,21 @@ void OctNode<NodeData,Real>::__ProcessFixedDepthNodeAdjacentNodes(const Real& dx
 }
 template <class NodeData,class Real>
 template<class NodeAdjacencyFunction>
-void OctNode<NodeData,Real>::__ProcessMaxDepthNodeAdjacentNodes(const Real& dx,const Real& dy,const Real& dz,
-																OctNode* node1,const Real& radius1,
-																OctNode* node2,const Real& radius2,const Real& cWidth2,
+void OctNode<NodeData,Real>::__ProcessMaxDepthNodeAdjacentNodes(const int& dx,const int& dy,const int& dz,
+																OctNode* node1,const int& radius1,
+																OctNode* node2,const int& radius2,const int& cWidth2,
 																const int& depth,NodeAdjacencyFunction* F)
 {
-	Real cWidth=cWidth2/2;
-	Real radius=radius2/2;
+	int cWidth=cWidth2>>1;
+	int radius=radius2>>1;
 	int o=ChildOverlap(dx,dy,dz,radius1+radius,cWidth);
 	if(o){
-		Real dx1=dx-cWidth;
-		Real dx2=dx+cWidth;
-		Real dy1=dy-cWidth;
-		Real dy2=dy+cWidth;
-		Real dz1=dz-cWidth;
-		Real dz2=dz+cWidth;
+		int dx1=dx-cWidth;
+		int dx2=dx+cWidth;
+		int dy1=dy-cWidth;
+		int dy2=dy+cWidth;
+		int dz1=dz-cWidth;
+		int dz2=dz+cWidth;
 		if(node2->depth()<=depth){
 			if(o&  1){F->Function(&node2->children[0],node1);}
 			if(o&  2){F->Function(&node2->children[1],node1);}
@@ -670,10 +626,10 @@ void OctNode<NodeData,Real>::__ProcessMaxDepthNodeAdjacentNodes(const Real& dx,c
 	}
 }
 template <class NodeData,class Real>
-inline int OctNode<NodeData,Real>::ChildOverlap(const Real& dx,const Real& dy,const Real& dz,const Real& d,const Real& cRadius2)
+inline int OctNode<NodeData,Real>::ChildOverlap(const int& dx,const int& dy,const int& dz,const int& d,const int& cRadius2)
 {
-	Real w1=d-cRadius2;
-	Real w2=d+cRadius2;
+	int w1=d-cRadius2;
+	int w2=d+cRadius2;
 	int overlap=0;
 
 	int test=0,test1=0;
@@ -769,26 +725,6 @@ int OctNode<NodeData,Real>::CornerIndex(const Point3D<Real>& center,const Point3
 	if(p.coords[2]>center.coords[2]){cIndex|=4;}
 	return cIndex;
 }
-/*
-template <class NodeData,class Real>
-void OctNode<NodeData,Real>::write(FILE* fp) const{
-	int child=0;
-	if(children){child=1;}
-	fwrite(&child,sizeof(int),1,fp);
-	if(children){for(int i=0;i<Cube::CORNERS;i++){children[i].write(fp);}}
-}
-template <class NodeData,class Real>
-void OctNode<NodeData,Real>::read(FILE* fp){
-	int child;
-	if(children){delete[] children;}
-	children=NULL;
-	fread(&child,sizeof(int),1,fp);
-	if(child){
-		initChildren();
-		for(int i=0;i<Cube::CORNERS;i++){children[i].read(fp);}
-	}
-}
-*/
 template <class NodeData,class Real>
 template<class NodeData2>
 OctNode<NodeData,Real>& OctNode<NodeData,Real>::operator = (const OctNode<NodeData2,Real>& node){
@@ -821,6 +757,7 @@ int OctNode<NodeData,Real>::CompareForwardPointerDepths(const void* v1,const voi
 	if(n1->off[0]!=n2->off[0]){return int(n1->off[0])-int(n2->off[0]);}
 	if(n1->off[1]!=n2->off[1]){return int(n1->off[1])-int(n2->off[1]);}
 	return int(n1->off[2])-int(n2->off[2]);
+	return 0;
 }
 template <class NodeData,class Real>
 int OctNode<NodeData,Real>::CompareBackwardDepths(const void* v1,const void* v2){
@@ -829,42 +766,6 @@ int OctNode<NodeData,Real>::CompareBackwardDepths(const void* v1,const void* v2)
 template <class NodeData,class Real>
 int OctNode<NodeData,Real>::CompareBackwardPointerDepths(const void* v1,const void* v2){
 	return (*(const OctNode<NodeData,Real>**)v2)->depth()-(*(const OctNode<NodeData,Real>**)v1)->depth();
-}
-template <class NodeData,class Real>
-inline int OctNode<NodeData,Real>::Overlap(const int &depth1,const int offSet1[DIMENSION],const Real& multiplier1,const int &depth2,const int offSet2[DIMENSION],const Real& multiplier2){
-	int d=depth1-depth2;
-	Real w;
-	if(!d){
-		w=multiplier2+multiplier1;
-		if(
-			fabs(Real(offSet2[0]-(offSet1[0])))>=w ||
-			fabs(Real(offSet2[1]-(offSet1[1])))>=w ||
-			fabs(Real(offSet2[2]-(offSet1[2])))>=w
-			){return 0;}
-		return 1;
-	}
-	else{
-		Real w2=Real((1<<(d-1))-0.5);
-		if(d<0){
-			d=-d;
-			w=multiplier2+multiplier1*(1<<d);
-			if(
-				fabs(Real(offSet2[0]-(offSet1[0]<<d))-w2)>=w ||
-				fabs(Real(offSet2[1]-(offSet1[1]<<d))-w2)>=w ||
-				fabs(Real(offSet2[2]-(offSet1[2]<<d))-w2)>=w
-				){return 0;}
-			return 1;
-		}
-		else{
-			w=multiplier1+multiplier2*(1<<d);
-			if(
-				fabs(Real(offSet1[0]-(offSet2[0]<<d))-w2)>=w ||
-				fabs(Real(offSet1[1]-(offSet2[1]<<d))-w2)>=w ||
-				fabs(Real(offSet1[2]-(offSet2[2]<<d))-w2)>=w
-				){return 0;}
-			return 1;
-		}
-	}
 }
 template <class NodeData,class Real>
 inline int OctNode<NodeData,Real>::Overlap2(const int &depth1,const int offSet1[DIMENSION],const Real& multiplier1,const int &depth2,const int offSet2[DIMENSION],const Real& multiplier2){
@@ -879,101 +780,9 @@ inline int OctNode<NodeData,Real>::Overlap2(const int &depth1,const int offSet1[
 	return 1;
 }
 template <class NodeData,class Real>
-inline int OctNode<NodeData,Real>::Overlap(const Point3D<Real>& c1,const Point3D<Real>& c2,const Real& dWidth){
-	if(fabs(c1.coords[0]-c2.coords[0])>=dWidth || fabs(c1.coords[1]-c2.coords[1])>=dWidth || fabs(c1.coords[2]-c2.coords[2])>=dWidth){return 0;}
-	else{return 1;}
-}
-template <class NodeData,class Real>
-inline int OctNode<NodeData,Real>::Overlap(const Real& c1,const Real& c2,const Real& c3,const Real& dWidth){
+inline int OctNode<NodeData,Real>::Overlap(const int& c1,const int& c2,const int& c3,const int& dWidth){
 	if(c1>=dWidth || c1<=-dWidth || c2>=dWidth || c2<=-dWidth || c3>=dWidth || c3<=-dWidth){return 0;}
 	else{return 1;}
-}
-template <class NodeData,class Real>
-inline int OctNode<NodeData,Real>::ChildOverlap(const Point3D<Real>& center1,const Real& radius1,const Real& radius2) const {
-	Real w = this->width*radius2/2+radius1;
-	Real w1 = w-this->width/4;
-	Real w2=w+this->width/4;
-	Real c1=this->center.coords[0]-center1.coords[0];
-	Real c2=this->center.coords[1]-center1.coords[1];
-	Real c3=this->center.coords[2]-center1.coords[2];
-	int overlap=0;
-
-	int test=0,test1=0;
-	if(c1<w2 && c1>-w1){test =1;}
-	if(c1<w1 && c1>-w2){test|=2;}
-
-	if(!test){return 0;}
-	if(c3<w2 && c3>-w1){test1 =test;}
-	if(c3<w1 && c3>-w2){test1|=test<<4;}
-
-	if(!test1){return 0;}
-	if(c2<w2 && c2>-w1){overlap =test1;}
-	if(c2<w1 && c2>-w2){overlap|=test1<<2;}
-	return overlap;
-}
-template <class NodeData,class Real>
-inline int OctNode<NodeData,Real>::ChildOverlap(const Point3D<Real>& center1,const Real& radius2) const {
-	Real w1=radius2-this->width/4;
-	Real w2=radius2+this->width/4;
-	Real c1=this->center.coords[0]-center1.coords[0];
-	Real c2=this->center.coords[1]-center1.coords[1];
-	Real c3=this->center.coords[2]-center1.coords[2];
-	int overlap=0;
-
-	int test=0,test1=0;
-	if(c1<w2 && c1>-w1){test =1;}
-	if(c1<w1 && c1>-w2){test|=2;}
-
-	if(!test){return 0;}
-	if(c3<w2 && c3>-w1){test1 =test;}
-	if(c3<w1 && c3>-w2){test1|=test<<4;}
-
-	if(!test1){return 0;}
-	if(c2<w2 && c2>-w1){overlap =test1;}
-	if(c2<w1 && c2>-w2){overlap|=test1<<2;}
-	return overlap;
-}
-template <class NodeData,class Real>
-inline int OctNode<NodeData,Real>::ChildOverlap(const Real& dx,const Real& dy,const Real& dz,const Real& radius) const {
-	Real w1=radius-this->width/4;
-	Real w2=radius+this->width/4;
-	int overlap=0;
-
-	int test=0,test1=0;
-	if(dx<w2 && dx>-w1){test =1;}
-	if(dx<w1 && dx>-w2){test|=2;}
-
-	if(!test){return 0;}
-	if(dz<w2 && dz>-w1){test1 =test;}
-	if(dz<w1 && dz>-w2){test1|=test<<4;}
-
-	if(!test1){return 0;}
-	if(dy<w2 && dy>-w1){overlap =test1;}
-	if(dy<w1 && dy>-w2){overlap|=test1<<2;}
-	return overlap;
-}
-
-template <class NodeData,class Real>
-inline int OctNode<NodeData,Real>::ChildOverlap2(const Point3D<Real>& center1,const Real& radius1,const Real& radius2,const Real& width2) const {
-	Real w1=width2-this->width/4;
-	Real w2=width2+this->width/4;
-	Real c1=this->center.coords[0]-center1.coords[0];
-	Real c2=this->center.coords[1]-center1.coords[1];
-	Real c3=this->center.coords[2]-center1.coords[2];
-	int overlap=0;
-
-	int test=0,test1=0;
-	if(c1<w2 && c1>-w1){test =1;}
-	if(c1<w1 && c1>-w2){test|=2;}
-
-	if(!test){return 0;}
-	if(c3<w2 && c3>-w1){test1 =test;}
-	if(c3<w1 && c3>-w2){test1|=test<<4;}
-
-	if(!test1){return 0;}
-	if(c2<w2 && c2>-w1){overlap =test1;}
-	if(c2<w1 && c2>-w2){overlap|=test1<<2;}
-	return overlap;
 }
 template <class NodeData,class Real>
 OctNode<NodeData,Real>* OctNode<NodeData,Real>::faceNeighbor(const int& faceIndex,const int& forceChildren){return __faceNeighbor(faceIndex>>1,faceIndex&1,forceChildren);}
@@ -1287,7 +1096,7 @@ typename OctNode<NodeData,Real>::Neighbors& OctNode<NodeData,Real>::NeighborKey:
 
 template<class NodeData,class Real>
 typename OctNode<NodeData,Real>::Neighbors& OctNode<NodeData,Real>::NeighborKey::getNeighbors(OctNode<NodeData,Real>* node){
-	int d=node->depth;
+	int d=node->depth();
 	if(node!=neighbors[d].neighbors[1][1][1]){
 		neighbors[d].clear();
 
@@ -1341,9 +1150,91 @@ typename OctNode<NodeData,Real>::Neighbors& OctNode<NodeData,Real>::NeighborKey:
 			}
 		}
 	}
-	return neighbors[node->depth];
+	return neighbors[node->depth()];
 }
 
+/////////////////////////
+// OctNodeNeighborKey2 //
+/////////////////////////
+template<class NodeData,class Real>
+OctNode<NodeData,Real>::Neighbors2::Neighbors2(void){clear();}
+template<class NodeData,class Real>
+void OctNode<NodeData,Real>::Neighbors2::clear(void){
+	for(int i=0;i<3;i++){for(int j=0;j<3;j++){for(int k=0;k<3;k++){neighbors[i][j][k]=NULL;}}}
+}
+template<class NodeData,class Real>
+OctNode<NodeData,Real>::NeighborKey2::NeighborKey2(void){neighbors=NULL;}
+template<class NodeData,class Real>
+OctNode<NodeData,Real>::NeighborKey2::~NeighborKey2(void){
+	if(neighbors){delete[] neighbors;}
+	neighbors=NULL;
+}
+
+template<class NodeData,class Real>
+void OctNode<NodeData,Real>::NeighborKey2::set(const int& d){
+	if(neighbors){delete[] neighbors;}
+	neighbors=NULL;
+	if(d<0){return;}
+	neighbors=new Neighbors2[d+1];
+}
+template<class NodeData,class Real>
+typename OctNode<NodeData,Real>::Neighbors2& OctNode<NodeData,Real>::NeighborKey2::getNeighbors(const OctNode<NodeData,Real>* node){
+	int d=node->depth();
+	if(node!=neighbors[d].neighbors[1][1][1]){
+		neighbors[d].clear();
+
+		if(!node->parent){neighbors[d].neighbors[1][1][1]=node;}
+		else{
+			int i,j,k,x1,y1,z1,x2,y2,z2;
+			int idx=int(node-node->parent->children);
+			Cube::FactorCornerIndex(  idx   ,x1,y1,z1);
+			Cube::FactorCornerIndex((~idx)&7,x2,y2,z2);
+			for(i=0;i<2;i++){
+				for(j=0;j<2;j++){
+					for(k=0;k<2;k++){
+						neighbors[d].neighbors[x2+i][y2+j][z2+k]=&node->parent->children[Cube::CornerIndex(i,j,k)];
+					}
+				}
+			}
+			Neighbors2& temp=getNeighbors(node->parent);
+
+			// Set the neighbors from across the faces
+			i=x1<<1;
+			if(temp.neighbors[i][1][1] && temp.neighbors[i][1][1]->children){
+				for(j=0;j<2;j++){for(k=0;k<2;k++){neighbors[d].neighbors[i][y2+j][z2+k]=&temp.neighbors[i][1][1]->children[Cube::CornerIndex(x2,j,k)];}}
+			}
+			j=y1<<1;
+			if(temp.neighbors[1][j][1] && temp.neighbors[1][j][1]->children){
+				for(i=0;i<2;i++){for(k=0;k<2;k++){neighbors[d].neighbors[x2+i][j][z2+k]=&temp.neighbors[1][j][1]->children[Cube::CornerIndex(i,y2,k)];}}
+			}
+			k=z1<<1;
+			if(temp.neighbors[1][1][k] && temp.neighbors[1][1][k]->children){
+				for(i=0;i<2;i++){for(j=0;j<2;j++){neighbors[d].neighbors[x2+i][y2+j][k]=&temp.neighbors[1][1][k]->children[Cube::CornerIndex(i,j,z2)];}}
+			}
+
+			// Set the neighbors from across the edges
+			i=x1<<1;	j=y1<<1;
+			if(temp.neighbors[i][j][1] && temp.neighbors[i][j][1]->children){
+				for(k=0;k<2;k++){neighbors[d].neighbors[i][j][z2+k]=&temp.neighbors[i][j][1]->children[Cube::CornerIndex(x2,y2,k)];}
+			}
+			i=x1<<1;	k=z1<<1;
+			if(temp.neighbors[i][1][k] && temp.neighbors[i][1][k]->children){
+				for(j=0;j<2;j++){neighbors[d].neighbors[i][y2+j][k]=&temp.neighbors[i][1][k]->children[Cube::CornerIndex(x2,j,z2)];}
+			}
+			j=y1<<1;	k=z1<<1;
+			if(temp.neighbors[1][j][k] && temp.neighbors[1][j][k]->children){
+				for(i=0;i<2;i++){neighbors[d].neighbors[x2+i][j][k]=&temp.neighbors[1][j][k]->children[Cube::CornerIndex(i,y2,z2)];}
+			}
+
+			// Set the neighbor from across the corner
+			i=x1<<1;	j=y1<<1;	k=z1<<1;
+			if(temp.neighbors[i][j][k] && temp.neighbors[i][j][k]->children){
+				neighbors[d].neighbors[i][j][k]=&temp.neighbors[i][j][k]->children[Cube::CornerIndex(x2,y2,z2)];
+			}
+		}
+	}
+	return neighbors[node->depth()];
+}
 
 template <class NodeData,class Real>
 int OctNode<NodeData,Real>::write(const char* fileName) const{
@@ -1380,4 +1271,15 @@ int OctNode<NodeData,Real>::read(FILE* fp){
 		}
 	}
 	return 1;
+}
+template<class NodeData,class Real>
+int OctNode<NodeData,Real>::width(const int& maxDepth) const {
+	int d=depth();
+	return 1<<(maxDepth-d); 
+}
+template<class NodeData,class Real>
+void OctNode<NodeData,Real>::centerIndex(const int& maxDepth,int index[DIMENSION]) const {
+	int d,o[3];
+	depthAndOffset(d,o);
+	for(int i=0;i<DIMENSION;i++){index[i]=BinaryNode<Real>::CornerIndex(maxDepth,d+1,o[i]<<1,1);}
 }

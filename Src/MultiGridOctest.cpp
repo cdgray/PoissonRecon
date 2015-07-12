@@ -113,6 +113,20 @@ void ShowUsage(char* ex)
 	printf("\t\t This parameter specifies the minimum number of points that\n");
 	printf("\t\t should fall within an octree node.\n");
 
+	printf("\t[--confidence]\n");
+	printf("\t\t If this flag is enabled, the size of a sample's normals is\n");
+	printf("\t\t used as a confidence value, affecting the sample's\n");
+	printf("\t\t constribution to the reconstruction process.\n");
+
+	printf("\t[--manifold]\n");
+	printf("\t\t If this flag is enabled, the isosurface extraction is performed\n");
+	printf("\t\t by adding a polygon's barycenter in order to ensure that the output\n");
+	printf("\t\t mesh is manifold.\n");
+
+	printf("\t[--polygonMesh]\n");
+	printf("\t\t If this flag is enabled, the isosurface extraction returns polygons\n");
+	printf("\t\t rather than triangles. (This overrides the --manifold flag.)\n");
+
 	printf("\t[--verbose]\n");
 }
 template<int Degree>
@@ -120,38 +134,37 @@ int Execute(int argc,char* argv[])
 {
 	int i;
 	cmdLineString In,Out;
-	cmdLineReadable Binary,Verbose,NoResetSamples,NoClipTree;
-	cmdLineInt Depth,SolverDivide,IsoDivide,Refine;
+	cmdLineReadable Binary,Verbose,NoResetSamples,NoClipTree,Confidence,Manifold,PolygonMesh;
+	cmdLineInt Depth(8),SolverDivide(8),IsoDivide(8),Refine(3);
 	cmdLineInt KernelDepth;
-	cmdLineFloat SamplesPerNode;
-	cmdLineFloat Scale;
+	cmdLineFloat SamplesPerNode(1.0f),Scale(1.25f);
 	char* paramNames[]=
 	{
 		"in","depth","out","refine","noResetSamples","noClipTree",
 		"binary","solverDivide","isoDivide","scale","verbose",
-		"kernelDepth","samplesPerNode"
+		"kernelDepth","samplesPerNode","confidence","manifold","polygonMesh"
 	};
 	cmdLineReadable* params[]=
 	{
 		&In,&Depth,&Out,&Refine,&NoResetSamples,&NoClipTree,
 		&Binary,&SolverDivide,&IsoDivide,&Scale,&Verbose,
-		&KernelDepth,&SamplesPerNode
+		&KernelDepth,&SamplesPerNode,&Confidence,&Manifold,&PolygonMesh
 	};
 	int paramNum=sizeof(paramNames)/sizeof(char*);
 	int commentNum=0;
 	char **comments;
 
 	comments=new char*[paramNum+7];
-	for(i=0;i<=paramNum;i++){comments[i]=new char[1024];}
+	for(i=0;i<paramNum+7;i++){comments[i]=new char[1024];}
 
-	const char* Rev = "$Rev: 197 $";
-	const char* Date = "$Date: 2006-08-07 10:59:08 -0400 (Mon, 07 Aug 2006) $";
+	const char* Rev = "Rev: V2 ";
+	const char* Date = "Date: 2006-11-09 (Thur, 09 Nov 2006) ";
 
 	cmdLineParse(argc-1,&argv[1],paramNames,paramNum,params,0);
 
 	if(Verbose.set){echoStdout=1;}
 
-	DumpOutput2(comments[commentNum++],"Running Multi-Grid Octree Surface Reconstructor (degree %d). %s\n", Degree , Rev );
+	DumpOutput2(comments[commentNum++],"Running Multi-Grid Octree Surface Reconstructor (degree %d). Version 2\n", Degree);
 	if(In.set)				{DumpOutput2(comments[commentNum++],"\t--in %s\n",In.value);}
 	if(Out.set)				{DumpOutput2(comments[commentNum++],"\t--out %s\n",Out.value);}
 	if(Binary.set)			{DumpOutput2(comments[commentNum++],"\t--binary\n");}
@@ -164,13 +177,19 @@ int Execute(int argc,char* argv[])
 	if(SamplesPerNode.set)	{DumpOutput2(comments[commentNum++],"\t--samplesPerNode %f\n",SamplesPerNode.value);}
 	if(NoResetSamples.set)	{DumpOutput2(comments[commentNum++],"\t--noResetSamples\n");}
 	if(NoClipTree.set)		{DumpOutput2(comments[commentNum++],"\t--noClipTree\n");}
+	if(Confidence.set)		{DumpOutput2(comments[commentNum++],"\t--confidence\n");}
+	if(Manifold.set)		{DumpOutput2(comments[commentNum++],"\t--manifold\n");}
+	if(PolygonMesh.set)		{DumpOutput2(comments[commentNum++],"\t--polygonMesh\n");}
 
-	int solverDivide=0,isoDivide=0;
 	double t;
 	double tt=Time();
 	Point3D<float> center;
 	Real scale=1.0;
 	Real isoValue=0;
+	//////////////////////////////////
+	// Fix courtesy of David Gallup //
+	TreeNodeData::UseIndex = 1;     //
+	//////////////////////////////////
 	Octree<Degree> tree;
 	PPolynomial<Degree> ReconstructionFunction=PPolynomial<Degree>::GaussianApproximation();
 
@@ -181,34 +200,32 @@ int Execute(int argc,char* argv[])
 		return 0;
 	}
 	
-	if(SolverDivide.set){solverDivide=SolverDivide.value;}
-	if(IsoDivide.set){isoDivide=IsoDivide.value;}
-
 	TreeOctNode::SetAllocator(MEMORY_ALLOCATOR_BLOCK_SIZE);
-	IsoNodeData::SetAllocator(MEMORY_ALLOCATOR_BLOCK_SIZE);
 
 	t=Time();
-	Real scaleFactor=SCALE;
-	Real samplesPerNode=1;
-	int kernelDepth,depth=8,refine=3;
-	if(Depth.set)			{depth=Depth.value;}
-	kernelDepth=depth-2;
-	if(KernelDepth.set)		{kernelDepth=KernelDepth.value;}
-	if(SamplesPerNode.set)	{samplesPerNode=SamplesPerNode.value;}
-	if(Refine.set)			{refine=Refine.value;}
-	if(Scale.set)			{scaleFactor=Scale.value;}
+	int kernelDepth=Depth.value-2;
+	if(KernelDepth.set){kernelDepth=KernelDepth.value;}
 
-	tree.setFunctionData(ReconstructionFunction,depth,0,Real(1.0)/(1<<depth));
+	tree.setFunctionData(ReconstructionFunction,Depth.value,0,Real(1.0)/(1<<Depth.value));
 	DumpOutput("Function Data Set In: %lg\n",Time()-t);
 	DumpOutput("Memory Usage: %.3f MB\n",float(MemoryInfo::Usage())/(1<<20));
-	if(kernelDepth>depth){
-		fprintf(stderr,"KernelDepth can't be greather than Depth: %d <= %d\n",kernelDepth,depth);
+	if(kernelDepth>Depth.value){
+		fprintf(stderr,"KernelDepth can't be greater than Depth: %d <= %d\n",kernelDepth,Depth.value);
 		return EXIT_FAILURE;
 	}
 
 
 	t=Time();
-	tree.setTree(In.value,depth,Binary.set,kernelDepth,Real(samplesPerNode),scaleFactor,center,scale,!NoResetSamples.set);
+#if 1
+	tree.setTree(In.value,Depth.value,Binary.set,kernelDepth,Real(SamplesPerNode.value),Scale.value,center,scale,!NoResetSamples.set,Confidence.set);
+#else
+if(Confidence.set){
+	tree.setTree(In.value,Depth.value,Binary.set,kernelDepth,Real(SamplesPerNode.value),Scale.value,center,scale,!NoResetSamples.set,0,1);
+}
+else{
+	tree.setTree(In.value,Depth.value,Binary.set,kernelDepth,Real(SamplesPerNode.value),Scale.value,center,scale,!NoResetSamples.set,0,0);
+}
+#endif
 	DumpOutput2(comments[commentNum++],"#             Tree set in: %9.1f (s), %9.1f (MB)\n",Time()-t,tree.maxMemoryUsage);
 	DumpOutput("Leaves/Nodes: %d/%d\n",tree.tree.leaves(),tree.tree.nodes());
 	DumpOutput("   Tree Size: %.3f MB\n",float(sizeof(TreeOctNode)*tree.tree.nodes())/(1<<20));
@@ -223,7 +240,7 @@ int Execute(int argc,char* argv[])
 	}
 
 	t=Time();
-	tree.finalize1(refine);
+	tree.finalize1(Refine.value);
 	DumpOutput("Finalized 1 In: %lg\n",Time()-t);
 	DumpOutput("Leaves/Nodes: %d/%d\n",tree.tree.leaves(),tree.tree.nodes());
 	DumpOutput("Memory Usage: %.3f MB\n",float(MemoryInfo::Usage())/(1<<20));
@@ -235,14 +252,14 @@ int Execute(int argc,char* argv[])
 	DumpOutput("Memory Usage: %.3f MB\n",float(MemoryInfo::Usage())/(1<<20));
 
 	t=Time();
-	tree.finalize2(refine);
+	tree.finalize2(Refine.value);
 	DumpOutput("Finalized 2 In: %lg\n",Time()-t);
 	DumpOutput("Leaves/Nodes: %d/%d\n",tree.tree.leaves(),tree.tree.nodes());
 	DumpOutput("Memory Usage: %.3f MB\n",float(MemoryInfo::Usage())/(1<<20));
 
 	tree.maxMemoryUsage=0;
 	t=Time();
-	tree.LaplacianMatrixIteration(solverDivide);
+	tree.LaplacianMatrixIteration(SolverDivide.value);
 	DumpOutput2(comments[commentNum++],"# Linear System Solved In: %9.1f (s), %9.1f (MB)\n",Time()-t,tree.maxMemoryUsage);
 	DumpOutput("Memory Usage: %.3f MB\n",float(MemoryInfo::Usage())/(1<<20));
 
@@ -255,11 +272,12 @@ int Execute(int argc,char* argv[])
 	DumpOutput("Memory Usage: %.3f MB\n",float(tree.MemoryUsage()));
 
 	t=Time();
-	if(isoDivide){tree.GetMCIsoTriangles(isoValue,isoDivide,&mesh);}
-	else{tree.GetMCIsoTriangles(isoValue,&mesh);}
-	DumpOutput2(comments[commentNum++],"#        Got Triangles in: %9.1f (s), %9.1f (MB)\n",Time()-t,tree.maxMemoryUsage);
+	if(IsoDivide.value) tree.GetMCIsoTriangles( isoValue , IsoDivide.value , &mesh , 0 , 1 , Manifold.set , PolygonMesh.set );
+	else                tree.GetMCIsoTriangles( isoValue ,                   &mesh , 0 , 1 , Manifold.set , PolygonMesh.set );
+	if( PolygonMesh.set ) DumpOutput2(comments[commentNum++],"#         Got Polygons in: %9.1f (s), %9.1f (MB)\n",Time()-t,tree.maxMemoryUsage);
+	else                  DumpOutput2(comments[commentNum++],"#        Got Triangles in: %9.1f (s), %9.1f (MB)\n",Time()-t,tree.maxMemoryUsage);
 	DumpOutput2(comments[commentNum++],"#              Total Time: %9.1f (s)\n",Time()-tt);
-	PlyWriteTriangles(Out.value,&mesh,PLY_BINARY_NATIVE,center,scale,comments,commentNum);
+	PlyWritePolygons(Out.value,&mesh,PLY_BINARY_NATIVE,center,scale,comments,commentNum);
 
 	return 1;
 }

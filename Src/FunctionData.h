@@ -32,17 +32,6 @@ DAMAGE.
 
 #include "PPolynomial.h"
 
-template<class Real>
-class FunctionValueTable{
-	int start,size;
-	Real* values;
-public:
-	FunctionValueTable(void);
-	~FunctionValueTable(void);
-	template<int Degree>
-	int setValues(const PPolynomial<Degree>& ppoly,const int& res);
-	inline Real operator[] (const int& idx);
-};
 template<int Degree,class Real>
 class FunctionData{
 	int useDotRatios;
@@ -55,8 +44,8 @@ public:
 	const static int D_VALUE_FLAG;
 
 	int depth,res,res2;
-	double *dotTable,*dDotTable,*d2DotTable;
-	double *valueTables,*dValueTables;
+	Real *dotTable,*dDotTable,*d2DotTable;
+	Real *valueTables,*dValueTables;
 	PPolynomial<Degree> baseFunction;
 	PPolynomial<Degree-1> dBaseFunction;
 	PPolynomial<Degree+1>* baseFunctions;
@@ -68,13 +57,17 @@ public:
 	virtual void clearDotTables(const int& flags);
 
 	virtual void   setValueTables(const int& flags,const double& smooth=0);
+	virtual void   setValueTables(const int& flags,const double& valueSmooth,const double& normalSmooth);
 	virtual void clearValueTables(void);
 
 	void set(const int& maxDepth,const PPolynomial<Degree>& F,const int& normalize,const int& useDotRatios=1);
 
-	double   dotProduct(const double& center1,const double& width1,const double& center2,const double& width2) const;
-	double  dDotProduct(const double& center1,const double& width1,const double& center2,const double& width2) const;
-	double d2DotProduct(const double& center1,const double& width1,const double& center2,const double& width2) const;
+	Real   dotProduct(const double& center1,const double& width1,const double& center2,const double& width2) const;
+	Real  dDotProduct(const double& center1,const double& width1,const double& center2,const double& width2) const;
+	Real d2DotProduct(const double& center1,const double& width1,const double& center2,const double& width2) const;
+
+	static inline int SymmetricIndex(const int& i1,const int& i2);
+	static inline int SymmetricIndex(const int& i1,const int& i2,int& index);
 };
 
 
