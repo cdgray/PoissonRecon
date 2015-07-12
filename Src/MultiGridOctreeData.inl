@@ -1277,24 +1277,16 @@ template< int Degree , bool OutputDensity >
 void Octree< Degree , OutputDensity >::finalize( int subdivideDepth )
 {
 	int maxDepth = tree.maxDepth( );
-	typename TreeOctNode::NeighborKey5 nKey;
+	typename TreeOctNode::NeighborKey3 nKey;
 	nKey.set( maxDepth );
-	for( int d=maxDepth ; d>0 ; d-- )
-		for( TreeOctNode* node=tree.nextNode() ; node ; node=tree.nextNode( node ) )
-			if( node->d==d )
-			{
-				int xStart=0 , xEnd=5 , yStart=0 , yEnd=5 , zStart=0 , zEnd=5;
-				int c = int( node - node->parent->children );
-				int x , y , z;
-				Cube::FactorCornerIndex( c , x , y , z );
-				if( x ) xStart = 1;
-				else    xEnd   = 4;
-				if( y ) yStart = 1;
-				else    yEnd   = 4;
-				if( z ) zStart = 1;
-				else    zEnd   = 4;
-				nKey.setNeighbors( node->parent , xStart , xEnd , yStart , yEnd , zStart , zEnd );
-			}
+	for( int d=maxDepth ; d>1 ; d-- )
+		for( TreeOctNode* node=tree.nextNode() ; node ; node=tree.nextNode( node ) ) if( node->d==d )
+		{
+			typename TreeOctNode::Neighbors3& neighbors = nKey.setNeighbors( node->parent->parent );
+			for( int i=0 ; i<3 ; i++ ) for( int j=0 ; j<3 ; j++ ) for( int k=0 ; k<3 ; k++ )
+				if( neighbors.neighbors[i][j][k] && !neighbors.neighbors[i][j][k]->children )
+					neighbors.neighbors[i][j][k]->initChildren();
+		}
 	refineBoundary( subdivideDepth );
 }
 template< int Degree , bool OutputDensity > Real Octree< Degree , OutputDensity >::GetLaplacian( const int idx[DIMENSION] ) const
