@@ -76,8 +76,8 @@ template< int Degree > inline int ReflectRight( unsigned int depth , int offset 
 template< int Degree , class Real >
 BSplineData<Degree,Real>::BSplineData( void )
 {
-	vvDotTable = dvDotTable = ddDotTable = NULL;
-	valueTables = dValueTables = NULL;
+	vvDotTable = dvDotTable = ddDotTable = NullPointer< Real >();
+	valueTables = dValueTables = NullPointer< Real >();
 	functionCount = sampleCount = 0;
 }
 
@@ -86,15 +86,12 @@ BSplineData< Degree , Real >::~BSplineData(void)
 {
 	if( functionCount )
 	{
-		if( vvDotTable ) delete[] vvDotTable;
-		if( dvDotTable ) delete[] dvDotTable;
-		if( ddDotTable ) delete[] ddDotTable;
-
-		if(  valueTables ) delete[]  valueTables;
-		if( dValueTables ) delete[] dValueTables;
+		if( vvDotTable ) DeletePointer( vvDotTable );
+		if( dvDotTable ) DeletePointer( dvDotTable );
+		if( ddDotTable ) DeletePointer( ddDotTable );
+		if(  valueTables ) DeletePointer(  valueTables );
+		if( dValueTables ) DeletePointer( dValueTables );
 	}
-	vvDotTable = dvDotTable = ddDotTable = NULL;
-	valueTables = dValueTables=NULL;
 	functionCount = 0;
 }
 
@@ -108,8 +105,8 @@ void BSplineData<Degree,Real>::set( int maxDepth , bool useDotRatios , int bound
 	// [Warning] This assumes that the functions spacing is dual
 	functionCount = BinaryNode< double >::CumulativeCenterCount( depth );
 	sampleCount   = BinaryNode< double >::CenterCount( depth ) + BinaryNode< double >::CornerCount( depth );
-	baseFunctions = new PPolynomial<Degree>[functionCount];
-	baseBSplines = new BSplineComponents[functionCount];
+	baseFunctions = NewPointer< PPolynomial< Degree > >( functionCount );
+	baseBSplines = NewPointer< BSplineComponents >( functionCount );
 
 	baseFunction = PPolynomial< Degree >::BSpline();
 	for( int i=0 ; i<=Degree ; i++ ) baseBSpline[i] = Polynomial< Degree >::BSplineComponent( i ).shift( double(-(Degree+1)/2) + i - 0.5 );
@@ -181,17 +178,17 @@ void BSplineData<Degree,Real>::setDotTables( int flags , bool inset )
 	int fullSize = functionCount*functionCount;
 	if( flags & VV_DOT_FLAG )
 	{
-		vvDotTable = new Real[size];
+		vvDotTable = NewPointer< Real >( size );
 		memset( vvDotTable , 0 , sizeof(Real)*size );
 	}
 	if( flags & DV_DOT_FLAG )
 	{
-		dvDotTable = new Real[fullSize];
+		dvDotTable = NewPointer< Real >( fullSize );
 		memset( dvDotTable , 0 , sizeof(Real)*fullSize );
 	}
 	if( flags & DD_DOT_FLAG )
 	{
-		ddDotTable = new Real[size];
+		ddDotTable = NewPointer< Real >( size );
 		memset( ddDotTable , 0 , sizeof(Real)*size );
 	}
 	double vvIntegrals[Degree+1][Degree+1];
@@ -295,9 +292,9 @@ void BSplineData<Degree,Real>::setDotTables( int flags , bool inset )
 template<int Degree,class Real>
 void BSplineData<Degree,Real>::clearDotTables( int flags )
 {
-	if( (flags & VV_DOT_FLAG) && vvDotTable ) delete[] vvDotTable , vvDotTable = NULL;
-	if( (flags & DV_DOT_FLAG) && dvDotTable ) delete[] dvDotTable , dvDotTable = NULL;
-	if( (flags & DD_DOT_FLAG) && ddDotTable ) delete[] ddDotTable , ddDotTable = NULL;
+	if( (flags & VV_DOT_FLAG) && vvDotTable ) DeletePointer( vvDotTable );
+	if( (flags & DV_DOT_FLAG) && dvDotTable ) DeletePointer( dvDotTable );
+	if( (flags & DD_DOT_FLAG) && ddDotTable ) DeletePointer( ddDotTable );
 }
 template< int Degree , class Real >
 void BSplineData< Degree , Real >::setSampleSpan( int idx , int& start , int& end , double smooth ) const
@@ -322,8 +319,8 @@ template<int Degree,class Real>
 void BSplineData<Degree,Real>::setValueTables( int flags , double smooth )
 {
 	clearValueTables();
-	if( flags &   VALUE_FLAG )  valueTables = new Real[functionCount*sampleCount];
-	if( flags & D_VALUE_FLAG ) dValueTables = new Real[functionCount*sampleCount];
+	if( flags &   VALUE_FLAG )  valueTables = NewPointer< Real >( functionCount*sampleCount );
+	if( flags & D_VALUE_FLAG ) dValueTables = NewPointer< Real >( functionCount*sampleCount );
 	PPolynomial<Degree+1> function;
 	PPolynomial<Degree>  dFunction;
 	for( int i=0 ; i<functionCount ; i++ )
@@ -350,8 +347,8 @@ template<int Degree,class Real>
 void BSplineData<Degree,Real>::setValueTables( int flags , double valueSmooth , double derivativeSmooth )
 {
 	clearValueTables();
-	if(flags &   VALUE_FLAG){ valueTables=new Real[functionCount*sampleCount];}
-	if(flags & D_VALUE_FLAG){dValueTables=new Real[functionCount*sampleCount];}
+	if(flags &   VALUE_FLAG)  valueTables = NewPointer< Real >( functionCount*sampleCount );
+	if(flags & D_VALUE_FLAG) dValueTables = NewPointer< Real >( functionCount*sampleCount );
 	PPolynomial<Degree+1> function;
 	PPolynomial<Degree>  dFunction;
 	for( int i=0 ; i<functionCount ; i++ )
@@ -373,9 +370,8 @@ void BSplineData<Degree,Real>::setValueTables( int flags , double valueSmooth , 
 
 template<int Degree,class Real>
 void BSplineData<Degree,Real>::clearValueTables(void){
-	if( valueTables){delete[]  valueTables;}
-	if(dValueTables){delete[] dValueTables;}
-	valueTables=dValueTables=NULL;
+	if(  valueTables ) DeletePointer(  valueTables );
+	if( dValueTables ) DeletePointer( dValueTables );
 }
 
 template<int Degree,class Real>

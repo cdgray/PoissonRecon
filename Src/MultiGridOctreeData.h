@@ -65,6 +65,8 @@ DAMAGE.
 #define FORCE_NEUMANN_FIELD 1		// This flag forces the normal component across the boundary of the integration domain to be zero.
 									// This should be enabled if GRADIENT_DOMAIN_SOLUTION is not, so that CG doesn't run into trouble.
 
+#define ROBERTO_TOLDO_FIX 1
+
 #if !FORCE_NEUMANN_FIELD
 #pragma message( "[WARNING] Not zeroing out normal component on boundary" )
 #endif // !FORCE_NEUMANN_FIELD
@@ -102,7 +104,7 @@ public:
 class SortedTreeNodes
 {
 public:
-	TreeOctNode** treeNodes;
+	Pointer( TreeOctNode* ) treeNodes;
 	int *nodeCount;
 	int maxDepth;
 	SortedTreeNodes( void );
@@ -240,8 +242,8 @@ class Octree
 	void SetMatrixRowBounds( const TreeOctNode* node , int rDepth , const int rOff[3] , int& xStart , int& xEnd , int& yStart , int& yEnd , int& zStart , int& zEnd ) const;
 	int GetMatrixRowSize( const TreeOctNode::Neighbors5& neighbors5 ) const;
 	int GetMatrixRowSize( const TreeOctNode::Neighbors5& neighbors5 , int xStart , int xEnd , int yStart , int yEnd , int zStart , int zEnd ) const;
-	int SetMatrixRow( const TreeOctNode::Neighbors5& neighbors5 , MatrixEntry< MatrixReal >* row , int offset , const double stencil[5][5][5] ) const;
-	int SetMatrixRow( const TreeOctNode::Neighbors5& neighbors5 , MatrixEntry< MatrixReal >* row , int offset , const double stencil[5][5][5] , int xStart , int xEnd , int yStart , int yEnd , int zStart , int zEnd ) const;
+	int SetMatrixRow( const TreeOctNode::Neighbors5& neighbors5 , Pointer( MatrixEntry< MatrixReal > ) row , int offset , const double stencil[5][5][5] ) const;
+	int SetMatrixRow( const TreeOctNode::Neighbors5& neighbors5 , Pointer( MatrixEntry< MatrixReal > ) row , int offset , const double stencil[5][5][5] , int xStart , int xEnd , int yStart , int yEnd , int zStart , int zEnd ) const;
 	void SetDivergenceStencil( int depth , Point3D< double > stencil[5][5][5] , bool scatter ) const;
 	void SetLaplacianStencil( int depth , double stencil[5][5][5] ) const;
 	template< class C , int N > struct Stencil{ C values[N][N][N]; };
@@ -260,7 +262,7 @@ class Octree
 	int GetFixedDepthLaplacian( SparseSymmetricMatrix< Real >& matrix , int depth , const SortedTreeNodes& sNodes , Real* subConstraints );
 	int GetRestrictedFixedDepthLaplacian( SparseSymmetricMatrix< Real >& matrix , int depth , const int* entries , int entryCount , const TreeOctNode* rNode, Real radius , const SortedTreeNodes& sNodes , Real* subConstraints );
 
-	void SetIsoCorners( Real isoValue , TreeOctNode* leaf , SortedTreeNodes::CornerTableData& cData , char* valuesSet , Real* values , TreeOctNode::ConstNeighborKey3& nKey , const Real* metSolution , const Stencil< Real , 3 > stencil1[8] , const Stencil< Real , 3 > stencil2[8][8] );
+	void SetIsoCorners( Real isoValue , TreeOctNode* leaf , SortedTreeNodes::CornerTableData& cData , Pointer( char ) valuesSet , Pointer( Real ) values , TreeOctNode::ConstNeighborKey3& nKey , const Real* metSolution , const Stencil< Real , 3 > stencil1[8] , const Stencil< Real , 3 > stencil2[8][8] );
 	static int IsBoundaryFace( const TreeOctNode* node , int faceIndex , int subdivideDepth );
 	static int IsBoundaryEdge( const TreeOctNode* node , int edgeIndex , int subdivideDepth );
 	static int IsBoundaryEdge( const TreeOctNode* node , int dir , int x , int y , int subidivideDepth );
@@ -274,10 +276,12 @@ class Octree
 		hash_map< long long , int > boundaryRoots;
 		// Vertex to ( value , normal ) map
 		hash_map< long long , std::pair< Real , Point3D< Real > > > *boundaryValues;
-		int* interiorRoots;
-		Real *cornerValues;
-		Point3D< Real >* cornerNormals;
-		char *cornerValuesSet , *cornerNormalsSet , *edgesSet;
+		Pointer( int ) interiorRoots;
+		Pointer( Real ) cornerValues;
+		Pointer( Point3D< Real > ) cornerNormals;
+		Pointer( char ) cornerValuesSet;
+		Pointer( char ) cornerNormalsSet;
+		Pointer( char ) edgesSet;
 	};
 
 	int SetBoundaryMCRootPositions( int sDepth , Real isoValue , RootData& rootData , CoredMeshData* mesh , int nonLinearFit );
@@ -327,7 +331,7 @@ public:
 	void setBSplineData( int maxDepth , int boundaryType=BSplineElements< Degree >::NONE );
 	void finalize( int subdivisionDepth );
 	int refineBoundary( int subdivisionDepth );
-	Real* GetSolutionGrid( int& res , Real isoValue=0.f , int depth=-1 );
+	Pointer( Real ) GetSolutionGrid( int& res , Real isoValue=0.f , int depth=-1 );
 	int setTree( char* fileName , int maxDepth , int minDepth , int kernelDepth , Real samplesPerNode ,
 		Real scaleFactor , int useConfidence , Real constraintWeight , int adaptiveExponent , XForm4x4< Real > xForm=XForm4x4< Real >::Identity );
 

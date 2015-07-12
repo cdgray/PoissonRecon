@@ -34,6 +34,7 @@ DAMAGE.
 
 #define ITERATION_POWER 1.0/3
 #define MEMORY_ALLOCATOR_BLOCK_SIZE 1<<12
+//#define MEMORY_ALLOCATOR_BLOCK_SIZE 0
 #define SPLAT_ORDER 2
 
 const Real MATRIX_ENTRY_EPSILON = Real(0);
@@ -48,24 +49,23 @@ const Real ROUND_EPS=Real(1e-5);
 SortedTreeNodes::SortedTreeNodes( void )
 {
 	nodeCount = NULL;
-	treeNodes = NULL;
+	treeNodes = NullPointer< TreeOctNode* >();
 	maxDepth = 0;
 }
 SortedTreeNodes::~SortedTreeNodes( void )
 {
 	if( nodeCount ) delete[] nodeCount;
-	if( treeNodes ) delete[] treeNodes;
 	nodeCount = NULL;
-	treeNodes = NULL;
+	if( treeNodes ) DeletePointer(  treeNodes );
 }
 
 void SortedTreeNodes::set( TreeOctNode& root )
 {
 	if( nodeCount ) delete[] nodeCount;
-	if( treeNodes ) delete[] treeNodes;
+	if( treeNodes ) DeletePointer( treeNodes );
 	maxDepth = root.maxDepth()+1;
 	nodeCount = new int[ maxDepth+1 ];
-	treeNodes = new TreeOctNode*[ root.nodes() ];
+	treeNodes = NewPointer< TreeOctNode* >( root.nodes() );
 
 	int startDepth = 0;
 	startDepth = 0;
@@ -1243,13 +1243,13 @@ int Octree< Degree >::GetMatrixRowSize( const OctNode< TreeNodeData , Real >::Ne
 	return count;
 }
 template< int Degree >
-int Octree< Degree >::SetMatrixRow( const OctNode< TreeNodeData , Real >::Neighbors5& neighbors5 , MatrixEntry< MatrixReal >* row , int offset , const double stencil[5][5][5] ) const
+int Octree< Degree >::SetMatrixRow( const OctNode< TreeNodeData , Real >::Neighbors5& neighbors5 , Pointer( MatrixEntry< MatrixReal > ) row , int offset , const double stencil[5][5][5] ) const
 {
 	return SetMatrixRow( neighbors5 , row , offset , stencil , 0 , 5 , 0 , 5 , 0 , 5 );
 }
 
 template< int Degree >
-int Octree< Degree >::SetMatrixRow( const OctNode< TreeNodeData , Real >::Neighbors5& neighbors5 , MatrixEntry< MatrixReal >* row , int offset , const double stencil[5][5][5] , int xStart , int xEnd , int yStart , int yEnd , int zStart , int zEnd ) const
+int Octree< Degree >::SetMatrixRow( const OctNode< TreeNodeData , Real >::Neighbors5& neighbors5 , Pointer( MatrixEntry< MatrixReal > ) row , int offset , const double stencil[5][5][5] , int xStart , int xEnd , int yStart , int yEnd , int zStart , int zEnd ) const
 {
 	bool hasYZPoints[3] , hasZPoints[3][3];
 	Real diagonal = 0;
@@ -1263,6 +1263,7 @@ int Octree< Degree >::SetMatrixRow( const OctNode< TreeNodeData , Real >::Neighb
 	bool isInterior;
 	int d , off[3];
 	neighbors5.neighbors[2][2][2]->depthAndOffset( d , off );
+
 	int o = _boundaryType==0 ? ( 1<<(d-2) ) : 0;
 	int mn = 2+o , mx = (1<<d)-2-o;
 	isInterior = ( off[0]>=mn && off[0]<mx && off[1]>=mn && off[1]<mx && off[2]>=mn && off[2]<mx );
@@ -1291,9 +1292,15 @@ int Octree< Degree >::SetMatrixRow( const OctNode< TreeNodeData , Real >::Neighb
 						Point3D< Real > p = pData.position;
 						for( int s=0 ; s<3 ; s++ )
 						{
+#if ROBERTO_TOLDO_FIX
+							if( idx[0]+j-s>=0 && idx[0]+j-s<((2<<node->d)-1) ) _splineValues[3*0+s] = Real( fData.baseBSplines[ idx[0]+j-s][s]( p[0] ) );
+							if( idx[1]+k-s>=0 && idx[1]+k-s<((2<<node->d)-1) ) _splineValues[3*1+s] = Real( fData.baseBSplines[ idx[1]+k-s][s]( p[1] ) );
+							if( idx[2]+l-s>=0 && idx[2]+l-s<((2<<node->d)-1) ) _splineValues[3*2+s] = Real( fData.baseBSplines[ idx[2]+l-s][s]( p[2] ) );
+#else // !ROBERTO_TOLDO_FIX
 							_splineValues[3*0+s] = Real( fData.baseBSplines[ idx[0]+j-s][s]( p[0] ) );
 							_splineValues[3*1+s] = Real( fData.baseBSplines[ idx[1]+k-s][s]( p[1] ) );
 							_splineValues[3*2+s] = Real( fData.baseBSplines[ idx[2]+l-s][s]( p[2] ) );
+#endif // ROBERTO_TOLDO_FIX
 						}
 						Real value = _splineValues[3*0+j] * _splineValues[3*1+k] * _splineValues[3*2+l];
 						Real weightedValue = value * weight;
@@ -1305,6 +1312,7 @@ int Octree< Degree >::SetMatrixRow( const OctNode< TreeNodeData , Real >::Neighb
 			}
 		}
 	}
+
 	Real pointValues[5][5][5];
 	if( _constrainValues )
 	{
@@ -1922,16 +1930,33 @@ Real Octree< Degree >::WeightedCoarserFunctionValue( const OctNode< TreeNodeData
 
 		for( int j=0 ; j<3 ; j++ )
 		{
+#if ROBERTO_TOLDO_FIX
+			double xValue = 0;
+			if( _idx[0]+j>=0 && _idx[0]+j<((1<<depth)-1) ) xValue = fData.baseBSplines[ _idx[0]+j ][2-j]( p[0] );
+			else continue;
+#else // !ROBERTO_TOLDO_FIX
 			double xValue = fData.baseBSplines[ _idx[0]+j ][2-j]( p[0] );
+#endif // ROBERTO_TOLDO_FIX
 			for( int k=0 ; k<3 ; k++ )
 			{
+#if ROBERTO_TOLDO_FIX
+				double xyValue = 0;
+				if( _idx[1]+k>=0 && _idx[1]+k<((1<<depth)-1) ) xyValue = xValue * fData.baseBSplines[ _idx[1]+k ][2-k]( p[1] );
+				else continue;
+#else // !ROBERTO_TOLDO_FIX
 				double xyValue = xValue * fData.baseBSplines[ _idx[1]+k ][2-k]( p[1] );
+#endif // ROBERTO_TOLDO_FIX
 				double _pointValue = 0;
 				for( int l=0 ; l<3 ; l++ )
 				{
 					const TreeOctNode* basisNode = neighbors.neighbors[j][k][l];
+#if ROBERTO_TOLDO_FIX
+					if( basisNode && basisNode->nodeData.nodeIndex>=0 && _idx[2]+l>=0 && _idx[2]+l<((1<<depth)-1) )
+						_pointValue += fData.baseBSplines[ _idx[2]+l ][2-l]( p[2] ) * double( metSolution[basisNode->nodeData.nodeIndex] );
+#else // !ROBERTO_TOLDO_FIX
 					if( basisNode && basisNode->nodeData.nodeIndex>=0 )
 						_pointValue += fData.baseBSplines[ _idx[2]+l ][2-l]( p[2] ) * double( metSolution[basisNode->nodeData.nodeIndex] );
+#endif // ROBERTO_TOLDO_FIX
 				}
 				pointValue += _pointValue * xyValue;
 			}
@@ -1958,7 +1983,6 @@ int Octree< Degree >::GetFixedDepthLaplacian( SparseSymmetricMatrix< Real >& mat
 		{
 			TreeOctNode* node = sNodes.treeNodes[i+start];
 			neighborKey5.getNeighbors( node );
-
 			// Get the matrix row size
 			bool insetSupported = _boundaryType!=0 || _IsInsetSupported( node );
 			int count = insetSupported ? GetMatrixRowSize( neighborKey5.neighbors[depth] ) : 1;
@@ -2061,7 +2085,6 @@ int Octree<Degree>::LaplacianMatrixIteration( int subdivideDepth , bool showResi
 	fData.setDotTables( fData.DD_DOT_FLAG | fData.DV_DOT_FLAG , _boundaryType==0 );
 	if( _boundaryType==0 ) subdivideDepth++ , maxSolveDepth++;
 
-	SparseMatrix< MatrixReal >::SetAllocator( MEMORY_ALLOCATOR_BLOCK_SIZE );
 	_sNodes.treeNodes[0]->nodeData.solution = 0;
 
 	std::vector< Real > metSolution( _sNodes.nodeCount[ _sNodes.maxDepth ] , 0 );
@@ -2071,7 +2094,6 @@ int Octree<Degree>::LaplacianMatrixIteration( int subdivideDepth , bool showResi
 		if( subdivideDepth>0 ) iter += _SolveFixedDepthMatrix( d , _sNodes , &metSolution[0] , subdivideDepth , showResidual , minIters , accuracy , d>maxSolveDepth , fixedIters );
 		else                   iter += _SolveFixedDepthMatrix( d , _sNodes , &metSolution[0] ,                  showResidual , minIters , accuracy , d>maxSolveDepth , fixedIters );
 	}
-	SparseMatrix< MatrixReal >::Allocator.reset();
 	fData.clearDotTables( fData.VV_DOT_FLAG | fData.DV_DOT_FLAG | fData.DD_DOT_FLAG );
 
 	return iter;
@@ -2086,7 +2108,6 @@ int Octree< Degree >::_SolveFixedDepthMatrix( int depth , const SortedTreeNodes&
 	Vector< Real > X , B;
 	SparseSymmetricMatrix< Real > M;
 	double systemTime=0. , solveTime=0. , updateTime=0. ,  evaluateTime = 0.;
-
 	X.Resize( sNodes.nodeCount[depth+1]-sNodes.nodeCount[depth] );
 	if( depth<=_minDepth ) UpSampleCoarserSolution( depth , sNodes , X );
 	else
@@ -2106,10 +2127,8 @@ int Octree< Degree >::_SolveFixedDepthMatrix( int depth , const SortedTreeNodes&
 	}
 
 	systemTime = Time();
-
 	{
 		// Get the system matrix
-		SparseSymmetricMatrix< Real >::Allocator.rollBack();
 		GetFixedDepthLaplacian( M , depth , sNodes , metSolution );
 		// Set the constraint vector
 		B.Resize( sNodes.nodeCount[depth+1]-sNodes.nodeCount[depth] );
@@ -2118,6 +2137,7 @@ int Octree< Degree >::_SolveFixedDepthMatrix( int depth , const SortedTreeNodes&
 			else                                                               B[i-sNodes.nodeCount[depth]] = Real(0);
 	}
 	systemTime = Time()-systemTime;
+
 
 	solveTime = Time();
 	// Solve the linear system
@@ -2244,7 +2264,6 @@ int Octree<Degree>::_SolveFixedDepthMatrix( int depth , const SortedTreeNodes& s
 #pragma omp parallel for num_threads( threads ) schedule( static )
 		for( j=0 ; j<asf.adjacencyCount ; j++ ) _X[j] = sNodes.treeNodes[ asf.adjacencies[j] ]->nodeData.solution;
 		// Get the associated matrix
-		SparseSymmetricMatrix< Real >::Allocator.rollBack();
 		GetRestrictedFixedDepthLaplacian( _M , depth , asf.adjacencies , asf.adjacencyCount , sNodes.treeNodes[i] , myRadius , sNodes , metSolution );
 #pragma omp parallel for num_threads( threads ) schedule( static )
 		for( j=0 ; j<asf.adjacencyCount ; j++ )
@@ -2321,7 +2340,6 @@ void Octree<Degree>::SetLaplacianConstraints( void )
 	// Within the same depth: set directly as a gather
 	// Coarser depths 
 	fData.setDotTables( fData.VV_DOT_FLAG | fData.DV_DOT_FLAG , _boundaryType==0 );
-
 	int maxDepth = _sNodes.maxDepth-1;
 	Point3D< Real > zeroPoint;
 	zeroPoint[0] = zeroPoint[1] = zeroPoint[2] = 0;
@@ -2674,17 +2692,17 @@ void Octree<Degree>::GetMCIsoTriangles( Real isoValue , int subdivideDepth , Cor
 
 	int maxCCount = _sNodes.getMaxCornerCount( sDepth , maxDepth , threads );
 	int maxECount = _sNodes.getMaxEdgeCount  ( &tree , sDepth , threads );
-	rootData.cornerValues     = new          Real  [ maxCCount ];
-	rootData.cornerNormals    = new Point3D< Real >[ maxCCount ];
-	rootData.interiorRoots    = new int [ maxECount ];
-	rootData.cornerValuesSet  = new char[ maxCCount ];
-	rootData.cornerNormalsSet = new char[ maxCCount ];
-	rootData.edgesSet         = new char[ maxECount ];
+	rootData.cornerValues     = NewPointer< Real            >( maxCCount );
+	rootData.cornerNormals    = NewPointer< Point3D< Real > >( maxCCount );
+	rootData.interiorRoots    = NewPointer< int             >( maxECount );
+	rootData.cornerValuesSet  = NewPointer< char            >( maxCCount );
+	rootData.cornerNormalsSet = NewPointer< char            >( maxCCount );
+	rootData.edgesSet         = NewPointer< char            >( maxECount );
 	_sNodes.setCornerTable( coarseRootData , NULL , sDepth , threads );
-	coarseRootData.cornerValues     = new            Real[ coarseRootData.cCount ];
-	coarseRootData.cornerNormals    = new Point3D< Real >[ coarseRootData.cCount ];
-	coarseRootData.cornerValuesSet  = new            char[ coarseRootData.cCount ];
-	coarseRootData.cornerNormalsSet = new            char[ coarseRootData.cCount ];
+	coarseRootData.cornerValues     = NewPointer< Real            >( coarseRootData.cCount );
+	coarseRootData.cornerNormals    = NewPointer< Point3D< Real > >( coarseRootData.cCount );
+	coarseRootData.cornerValuesSet  = NewPointer< char            >( coarseRootData.cCount );
+	coarseRootData.cornerNormalsSet = NewPointer< char            >( coarseRootData.cCount );
 	memset( coarseRootData.cornerValuesSet  , 0 , sizeof( char ) * coarseRootData.cCount );
 	memset( coarseRootData.cornerNormalsSet , 0 , sizeof( char ) * coarseRootData.cCount );
 	MemoryUsage();
@@ -2763,11 +2781,11 @@ void Octree<Degree>::GetMCIsoTriangles( Real isoValue , int subdivideDepth , Cor
 	}
 
 	MemoryUsage();
-	delete[] rootData.cornerValues , delete[] rootData.cornerNormals , rootData.cornerValues = NULL , rootData.cornerNormals = NULL;
-	delete[] rootData.cornerValuesSet  , delete[] rootData.cornerNormalsSet , rootData.cornerValuesSet = NULL , rootData.cornerNormalsSet = NULL;
-	delete[] rootData.interiorRoots ; rootData.interiorRoots = NULL;
-	delete[] rootData.edgesSet ; rootData.edgesSet = NULL;
-	coarseRootData.interiorRoots = NULL;
+	DeletePointer( rootData.cornerValues ) ; DeletePointer( rootData.cornerNormals );
+	DeletePointer( rootData.cornerValuesSet ) ; DeletePointer( rootData.cornerNormalsSet );
+	DeletePointer( rootData.interiorRoots );
+	DeletePointer( rootData.edgesSet );
+	coarseRootData.interiorRoots = NullPointer< int >();
 	coarseRootData.boundaryValues = rootData.boundaryValues;
 	for( hash_map< long long , int >::iterator iter=rootData.boundaryRoots.begin() ; iter!=rootData.boundaryRoots.end() ; iter++ ) 
 		coarseRootData.boundaryRoots[iter->first] = iter->second;
@@ -2798,8 +2816,8 @@ void Octree<Degree>::GetMCIsoTriangles( Real isoValue , int subdivideDepth , Cor
 	}
 	MemoryUsage();
 
-	delete[] coarseRootData.cornerValues , delete[] coarseRootData.cornerNormals;
-	delete[] coarseRootData.cornerValuesSet  , delete[] coarseRootData.cornerNormalsSet;
+	DeletePointer( coarseRootData.cornerValues ) ;  DeletePointer( coarseRootData.cornerNormals );
+	DeletePointer( coarseRootData.cornerValuesSet ) ; DeletePointer( coarseRootData.cornerNormalsSet );
 	delete rootData.boundaryValues;
 }
 template<int Degree>
@@ -3021,7 +3039,7 @@ Real Octree<Degree>::GetIsoValue( void )
 }
 
 template< int Degree >
-void Octree< Degree >::SetIsoCorners( Real isoValue , TreeOctNode* leaf , SortedTreeNodes::CornerTableData& cData , char* valuesSet , Real* values , TreeOctNode::ConstNeighborKey3& nKey , const Real* metSolution , const Stencil< Real , 3 > stencil1[8] , const Stencil< Real , 3 > stencil2[8][8] )
+void Octree< Degree >::SetIsoCorners( Real isoValue , TreeOctNode* leaf , SortedTreeNodes::CornerTableData& cData , Pointer( char ) valuesSet , Pointer( Real ) values , TreeOctNode::ConstNeighborKey3& nKey , const Real* metSolution , const Stencil< Real , 3 > stencil1[8] , const Stencil< Real , 3 > stencil2[8][8] )
 {
 	Real cornerValues[ Cube::CORNERS ];
 	const SortedTreeNodes::CornerIndices& cIndices = cData[ leaf ];
@@ -3966,7 +3984,7 @@ int Octree<Degree>::AddTriangles( CoredMeshData* mesh , std::vector<CoredPointIn
 	return int(edges.size())-2;
 }
 template< int Degree >
-Real* Octree< Degree >::GetSolutionGrid( int& res , Real isoValue , int depth )
+Pointer( Real ) Octree< Degree >::GetSolutionGrid( int& res , Real isoValue , int depth )
 {
 	int maxDepth = _boundaryType==0 ? tree.maxDepth()-1 : tree.maxDepth();
 	if( depth<=0 || depth>maxDepth ) depth = maxDepth;
@@ -3974,7 +3992,7 @@ Real* Octree< Degree >::GetSolutionGrid( int& res , Real isoValue , int depth )
 	fData.set( _boundaryType==0 ? depth+1 : depth , true , _boundaryType );
 	res = 1<<depth;
 	fData.setValueTables( fData.VALUE_FLAG );
-	Real* values = new Real[ res * res * res ];
+	Pointer( Real ) values = NewPointer< Real >( res * res * res );
 	memset( values , 0 , sizeof( Real ) * res  * res * res );
 
 	for( TreeOctNode* n=tree.nextNode() ; n ; n=tree.nextNode( n ) )

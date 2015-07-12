@@ -188,6 +188,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Src\Allocator.h" />
+    <ClInclude Include="Src\Array.h" />
     <ClInclude Include="Src\BinaryNode.h" />
     <ClInclude Include="Src\BSplineData.h" />
     <ClInclude Include="Src\CmdLineParser.h" />
@@ -209,6 +210,7 @@
     <ClInclude Include="Src\Vector.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Src\Array.inl" />
     <None Include="Src\CmdLineParser.inl" />
     <None Include="Src\MAT.inl" />
     <None Include="Src\PointStream.inl" />

@@ -31,6 +31,7 @@ DAMAGE.
 
 
 #include "PPolynomial.h"
+#include "Array.h"
 
 template< int Degree >
 struct BSplineElementCoefficients
@@ -95,13 +96,16 @@ public:
 	const static int D_VALUE_FLAG = 2;
 
 	int depth , functionCount , sampleCount;
-	Real *vvDotTable , *dvDotTable , *ddDotTable;
-	Real *valueTables , *dValueTables;
+	Pointer( Real ) vvDotTable;
+	Pointer( Real ) dvDotTable;
+	Pointer( Real ) ddDotTable;
+	Pointer( Real ) valueTables;
+	Pointer( Real ) dValueTables;
 	PPolynomial< Degree   >  baseFunction ,  leftBaseFunction ,  rightBaseFunction ,  leftRightBaseFunction;
 	PPolynomial< Degree-1 > dBaseFunction , dLeftBaseFunction , dRightBaseFunction , dLeftRightBaseFunction;
 	BSplineComponents baseBSpline , leftBSpline , rightBSpline , leftRightBSpline;
-	PPolynomial<Degree>* baseFunctions;
-	BSplineComponents* baseBSplines;
+	Pointer( PPolynomial< Degree > ) baseFunctions;
+	Pointer( BSplineComponents ) baseBSplines;
 
 	BSplineData(void);
 	~BSplineData(void);

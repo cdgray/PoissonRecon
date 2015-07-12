@@ -253,7 +253,7 @@ int Execute( int argc , char* argv[] )
 	else xForm = XForm4x4< Real >::Identity();
 	iXForm = xForm.inverse();
 
-	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 4.5)\n" , Degree );
+	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 4.51)\n" , Degree );
 	char str[1024];
 	for( int i=0 ; i<paramNum ; i++ )
 		if( params[i]->set )
@@ -337,7 +337,7 @@ int Execute( int argc , char* argv[] )
 		else
 		{
 			int res;
-			Real* values = tree.GetSolutionGrid( res , isoValue , VoxelDepth.value );
+			Pointer( Real ) values = tree.GetSolutionGrid( res , isoValue , VoxelDepth.value );
 			fwrite( &res , sizeof(int) , 1 , fp );
 			if( sizeof(Real)==sizeof(float) ) fwrite( values , sizeof(float) , res*res*res , fp );
 			else
@@ -348,7 +348,7 @@ int Execute( int argc , char* argv[] )
 				delete[] fValues;
 			}
 			fclose( fp );
-			delete[] values;
+			DeletePointer( values );
 		}
 		DumpOutput( "Got voxel grid in: %f\n" , Time()-t );
 	}

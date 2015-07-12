@@ -30,7 +30,7 @@ DAMAGE.
 #define __SPARSEMATRIX_HPP
 
 #include "Vector.h"
-#include "Allocator.h"
+#include "Array.h"
 
 template <class T>
 struct MatrixEntry
@@ -47,17 +47,12 @@ template<class T> class SparseMatrix
 private:
 	bool _contiguous;
 	int _maxEntriesPerRow;
-	static int UseAlloc;
 public:
-	static Allocator<MatrixEntry<T> > Allocator;
-	static int UseAllocator(void);
-	static void SetAllocator( int blockSize );
-
 	int rows;
-	int* rowSizes;
-	MatrixEntry<T>** m_ppElements;
-	MatrixEntry< T >* operator[] ( int idx ) { return m_ppElements[idx]; }
-	const MatrixEntry< T >* operator[] ( int idx ) const { return m_ppElements[idx]; }
+	Pointer( int ) rowSizes;
+	Pointer( Pointer( MatrixEntry< T > ) ) m_ppElements;
+	Pointer( MatrixEntry< T > ) operator[] ( int idx ) { return m_ppElements[idx]; }
+	ConstPointer( MatrixEntry< T > ) operator[] ( int idx ) const { return m_ppElements[idx]; }
 
 	SparseMatrix( void );
 	SparseMatrix( int rows );

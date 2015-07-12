@@ -225,7 +225,7 @@ public:
 	class Neighbors5
 	{
 	public:
-		OctNode*  neighbors[5][5][5];
+		OctNode* neighbors[5][5][5];
 		Neighbors5( void );
 		void clear( void );
 	};

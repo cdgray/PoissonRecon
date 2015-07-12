@@ -32,21 +32,6 @@ DAMAGE.
 ///////////////////
 //  SparseMatrix //
 ///////////////////
-///////////////////////////////////////////
-// Static Allocator Methods and Memebers //
-///////////////////////////////////////////
-template<class T> int SparseMatrix<T>::UseAlloc=0;
-template<class T> Allocator<MatrixEntry<T> > SparseMatrix<T>::Allocator;
-template<class T> int SparseMatrix<T>::UseAllocator(void){return UseAlloc;}
-template<class T>
-void SparseMatrix<T>::SetAllocator( int blockSize )
-{
-	if(blockSize>0){
-		UseAlloc=1;
-		Allocator.set(blockSize);
-	}
-	else{UseAlloc=0;}
-}
 ///////////////////////////////////////
 // SparseMatrix Methods and Memebers //
 ///////////////////////////////////////
@@ -57,8 +42,8 @@ SparseMatrix< T >::SparseMatrix( void )
 	_contiguous = false;
 	_maxEntriesPerRow = 0;
 	rows = 0;
-	rowSizes = NULL;
-	m_ppElements = NULL;
+	rowSizes = NullPointer< int >( );
+	m_ppElements = NullPointer< Pointer( MatrixEntry< T > ) >( );
 }
 
 template< class T > SparseMatrix< T >::SparseMatrix( int rows                        ) : SparseMatrix< T >() { Resize( rows ); }
@@ -147,19 +132,17 @@ void SparseMatrix< T >::Resize( int r )
 {
 	if( rows>0 )
 	{
-
-		if( !UseAlloc )
-			if( _contiguous ){ if( _maxEntriesPerRow ) free( m_ppElements[0] ); }
-			else for( int i=0 ; i<rows ; i++ ){ if( rowSizes[i] ) free( m_ppElements[i] ); }
-		free( m_ppElements );
-		free( rowSizes );
+		if( _contiguous ){ if( _maxEntriesPerRow ) FreePointer( m_ppElements[0] ); }
+		else for( int i=0 ; i<rows ; i++ ){ if( rowSizes[i] ) FreePointer( m_ppElements[i] ); }
+		FreePointer( m_ppElements );
+		FreePointer( rowSizes );
 	}
 	rows = r;
 	if( r )
 	{
-		rowSizes = ( int* )malloc( sizeof( int ) * r );
+		rowSizes = AllocPointer< int >( r );
+		m_ppElements = AllocPointer< Pointer( MatrixEntry< T > ) >( r );
 		memset( rowSizes , 0 , sizeof( int ) * r );
-		m_ppElements = ( MatrixEntry< T >** )malloc( sizeof( MatrixEntry< T >* ) * r );
 	}
 	_contiguous = false;
 	_maxEntriesPerRow = 0;
@@ -169,19 +152,18 @@ void SparseMatrix< T >::Resize( int r , int e )
 {
 	if( rows>0 )
 	{
-		if( !UseAlloc )
-			if( _contiguous ){ if( _maxEntriesPerRow ) free( m_ppElements[0] ); }
-			else for( int i=0 ; i<rows ; i++ ){ if( rowSizes[i] ) free( m_ppElements[i] ); }
-		free( m_ppElements );
-		free( rowSizes );
+		if( _contiguous ){ if( _maxEntriesPerRow ) FreePointer( m_ppElements[0] ); }
+		else for( int i=0 ; i<rows ; i++ ){ if( rowSizes[i] ) FreePointer( m_ppElements[i] ); }
+		FreePointer( m_ppElements );
+		FreePointer( rowSizes );
 	}
 	rows = r;
 	if( r )
 	{
-		rowSizes = ( int* )malloc( sizeof( int ) * r );
+		rowSizes = AllocPointer< int >( r );
+		m_ppElements = AllocPointer< Pointer( MatrixEntry< T > ) >( r );
+		m_ppElements[0] = AllocPointer< MatrixEntry< T > >( r * e );
 		memset( rowSizes , 0 , sizeof( int ) * r );
-		m_ppElements = ( MatrixEntry< T >** )malloc( sizeof( MatrixEntry< T >* ) * r );
-		m_ppElements[0] = ( MatrixEntry< T >* )malloc( sizeof( MatrixEntry< T > ) * r * e );
 		for( int i=1 ; i<r ; i++ ) m_ppElements[i] = m_ppElements[i-1] + e;
 	}
 	_contiguous = true;
@@ -198,12 +180,8 @@ void SparseMatrix< T >::SetRowSize( int row , int count )
 	}
 	else if( row>=0 && row<rows )
 	{
-		if( UseAlloc ) m_ppElements[row] = Allocator.newElements(count);
-		else
-		{
-			if( rowSizes[row] ) free( m_ppElements[row] );
-			if( count>0 ) m_ppElements[row] = ( MatrixEntry< T >* )malloc( sizeof( MatrixEntry< T > ) * count );
-		}
+		if( rowSizes[row] ) FreePointer( m_ppElements[row] );
+		if( count>0 ) m_ppElements[row] = AllocPointer< MatrixEntry< T > >( count );
 	}
 }
 
@@ -465,7 +443,9 @@ void SparseSymmetricMatrix<T>::Multiply( const Vector<T2>& In , Vector<T2>& Out 
 			{
 				const T2& in_i_ = in[i];
 				T2& out_i_ = out[i];
-				for( const MatrixEntry< T > *temp = SparseMatrix< T >::m_ppElements[i] , *end = temp+SparseMatrix< T >::rowSizes[i] ; temp!=end ; temp++ )
+				ConstPointer( MatrixEntry< T > ) temp;
+				ConstPointer( MatrixEntry< T > ) end;
+				for( temp = SparseMatrix< T >::m_ppElements[i] , end = temp+SparseMatrix< T >::rowSizes[i] ; temp!=end ; temp++ )
 				{
 					int j = temp->N;
 					T2 v = temp->Value;
@@ -497,7 +477,9 @@ void SparseSymmetricMatrix<T>::Multiply( const Vector<T2>& In , Vector<T2>& Out 
 			{
 				T2 in_i_ = in[i];
 				T2 out_i_ = T2();
-				for( const MatrixEntry< T > *temp = SparseMatrix< T >::m_ppElements[i] , *end = temp+SparseMatrix< T >::rowSizes[i] ; temp!=end ; temp++ )
+				ConstPointer( MatrixEntry< T > ) temp;
+				ConstPointer( MatrixEntry< T > ) end;
+				for( temp = SparseMatrix< T >::m_ppElements[i] , end = temp+SparseMatrix< T >::rowSizes[i] ; temp!=end ; temp++ )
 				{
 					int j = temp->N;
 					T2 v = temp->Value;
