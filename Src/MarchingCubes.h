@@ -50,30 +50,31 @@ class Cube{
 public:
 	const static unsigned int CORNERS=8,EDGES=12,NEIGHBORS=6;
 
-	static int  CornerIndex			(int x,int y,int z);
-	static void FactorCornerIndex	(int idx,int& x,int& y,int& z);
-	static int  EdgeIndex			(int orientation,int i,int j);
-	static void FactorEdgeIndex		(int idx,int& orientation,int& i,int &j);
-	static int  FaceIndex			(int dir,int offSet);
-	static int  FaceIndex			(int x,int y,int z);
-	static void FactorFaceIndex		(int idx,int& x,int &y,int& z);
-	static void FactorFaceIndex		(int idx,int& dir,int& offSet);
+	static int  CornerIndex			( int x , int y , int z );
+	static void FactorCornerIndex	( int idx , int& x , int& y , int& z );
+	static int  EdgeIndex			( int orientation , int i , int j );
+	static void FactorEdgeIndex		( int idx , int& orientation , int& i , int &j);
+	static int  FaceIndex			( int dir , int offSet );
+	static int  FaceIndex			( int x , int y , int z );
+	static void FactorFaceIndex		( int idx , int& x , int &y , int& z );
+	static void FactorFaceIndex		( int idx , int& dir , int& offSet );
 
-	static int  AntipodalCornerIndex	(int idx);
-	static int  FaceReflectCornerIndex	(int idx,int faceIndex);
-	static int  FaceReflectEdgeIndex	(int idx,int faceIndex);
-	static int	FaceReflectFaceIndex	(int idx,int faceIndex);
-	static int	EdgeReflectCornerIndex	(int idx,int edgeIndex);
-	static int	EdgeReflectEdgeIndex	(int edgeIndex);
+	static int  AntipodalCornerIndex	( int idx );
+	static int  FaceReflectCornerIndex	( int idx , int faceIndex );
+	static int  FaceReflectEdgeIndex	( int idx , int faceIndex );
+	static int	FaceReflectFaceIndex	( int idx , int faceIndex );
+	static int	EdgeReflectCornerIndex	( int idx , int edgeIndex );
+	static int	EdgeReflectEdgeIndex	( int edgeIndex );
 
-	static int  FaceAdjacentToEdges	(int eIndex1,int eIndex2);
-	static void FacesAdjacentToEdge	(int eIndex,int& f1Index,int& f2Index);
+	static int  FaceAdjacentToEdges	( int eIndex1 , int eIndex2 );
+	static void FacesAdjacentToEdge	( int eIndex , int& f1Index , int& f2Index );
 
-	static void EdgeCorners(int idx,int& c1,int &c2);
-	static void FaceCorners(int idx,int& c1,int &c2,int& c3,int& c4);
+	static void EdgeCorners( int idx , int& c1 , int &c2 );
+	static void FaceCorners( int idx , int& c1 , int &c2 , int& c3 , int& c4 );
 };
 
-class MarchingSquares{
+class MarchingSquares
+{
 	static double Interpolate(double v1,double v2);
 	static void SetVertex(int e,const double values[Square::CORNERS],double iso);
 public:
@@ -82,21 +83,23 @@ public:
 	static const int edges[1<<Square::CORNERS][2*MAX_EDGES+1];
 	static double vertexList[Square::EDGES][2];
 
-	static int GetIndex(const double values[Square::CORNERS],double iso);
-	static int IsAmbiguous(const double v[Square::CORNERS],double isoValue);
-	static int AddEdges(const double v[Square::CORNERS],double isoValue,Edge* edges);
-	static int AddEdgeIndices(const double v[Square::CORNERS],double isoValue,int* edges);
+	static unsigned char GetIndex( const double values[Square::CORNERS] , double iso );
+	static bool IsAmbiguous( const double v[Square::CORNERS] , double isoValue );
+	static bool IsAmbiguous( unsigned char idx );
+	static bool HasRoots( unsigned char idx );
+	static int AddEdges( const double v[Square::CORNERS] , double isoValue , Edge* edges );
+	static int AddEdgeIndices( const double v[Square::CORNERS] , double isoValue , int* edges);
 };
 
 class MarchingCubes
 {
 	static void SetVertex(int e,const double values[Cube::CORNERS],double iso);
-	static int GetFaceIndex(const double values[Cube::CORNERS],double iso,int faceIndex);
+	static unsigned char GetFaceIndex( const double values[Cube::CORNERS] , double iso , int faceIndex );
 
 	static void SetVertex(int e,const float values[Cube::CORNERS],float iso);
-	static int GetFaceIndex(const float values[Cube::CORNERS],float iso,int faceIndex);
+	static unsigned char GetFaceIndex( const float values[Cube::CORNERS] , float iso , int faceIndex );
 
-	static int GetFaceIndex(int mcIndex,int faceIndex);
+	static unsigned char GetFaceIndex( unsigned char mcIndex , int faceIndex );
 public:
 	static double Interpolate(double v1,double v2);
 	static float Interpolate(float v1,float v2);
@@ -108,23 +111,23 @@ public:
 
 	static int AddTriangleIndices(int mcIndex,int* triangles);
 
-	static int GetIndex(const double values[Cube::CORNERS],double iso);
-	static int IsAmbiguous(const double v[Cube::CORNERS],double isoValue,int faceIndex);
-	static int HasRoots(const double v[Cube::CORNERS],double isoValue);
-	static int HasRoots(const double v[Cube::CORNERS],double isoValue,int faceIndex);
-	static int AddTriangles(const double v[Cube::CORNERS],double isoValue,Triangle* triangles);
-	static int AddTriangleIndices(const double v[Cube::CORNERS],double isoValue,int* triangles);
+	static unsigned char GetIndex( const double values[Cube::CORNERS] , double iso );
+	static bool IsAmbiguous( const double v[Cube::CORNERS] , double isoValue , int faceIndex );
+	static bool HasRoots( const double v[Cube::CORNERS] , double isoValue );
+	static bool HasRoots( const double v[Cube::CORNERS] , double isoValue , int faceIndex );
+	static int AddTriangles( const double v[Cube::CORNERS] , double isoValue , Triangle* triangles );
+	static int AddTriangleIndices( const double v[Cube::CORNERS] , double isoValue , int* triangles );
 
-	static int GetIndex(const float values[Cube::CORNERS],float iso);
-	static int IsAmbiguous(const float v[Cube::CORNERS],float isoValue,int faceIndex);
-	static int HasRoots(const float v[Cube::CORNERS],float isoValue);
-	static int HasRoots(const float v[Cube::CORNERS],float isoValue,int faceIndex);
-	static int AddTriangles(const float v[Cube::CORNERS],float isoValue,Triangle* triangles);
-	static int AddTriangleIndices(const float v[Cube::CORNERS],float isoValue,int* triangles);
+	static unsigned char GetIndex( const float values[Cube::CORNERS] , float iso );
+	static bool IsAmbiguous( const float v[Cube::CORNERS] , float isoValue , int faceIndex );
+	static bool HasRoots( const float v[Cube::CORNERS] , float isoValue );
+	static bool HasRoots( const float v[Cube::CORNERS] , float isoValue , int faceIndex );
+	static int AddTriangles( const float v[Cube::CORNERS] , float isoValue , Triangle* triangles );
+	static int AddTriangleIndices( const float v[Cube::CORNERS] , float isoValue , int* triangles );
 
-	static int IsAmbiguous(int mcIndex,int faceIndex);
-	static int HasRoots(int mcIndex);
-	static int HasFaceRoots(int mcIndex,int faceIndex);
-	static int HasEdgeRoots(int mcIndex,int edgeIndex);
+	static bool IsAmbiguous( unsigned char mcIndex , int faceIndex );
+	static bool HasRoots( unsigned char mcIndex );
+	static bool HasFaceRoots( unsigned char mcIndex , int faceIndex );
+	static bool HasEdgeRoots( unsigned char mcIndex , int edgeIndex );
 };
 #endif //MARCHING_CUBES_INCLUDED

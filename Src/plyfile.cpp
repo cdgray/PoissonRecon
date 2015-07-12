@@ -99,7 +99,7 @@ static int types_checked = 0;
 
 
 /* returns 1 if strings are equal, 0 if not */
-int equal_strings(char *, char *);
+int equal_strings(const char *, const char *);
 
 /* find an element in a plyfile's list */
 PlyElement *find_element(PlyFile *, char *);
@@ -175,7 +175,7 @@ Given a file pointer, get ready to write PLY data to the file.
 PlyFile *ply_write(
 				   FILE *fp,
 				   int nelems,
-				   char **elem_names,
+				   const char **elem_names,
 				   int file_type
 				   )
 {
@@ -239,7 +239,7 @@ Open a polygon file for writing.
 PlyFile *ply_open_for_writing(
 							  char *filename,
 							  int nelems,
-							  char **elem_names,
+							  const char **elem_names,
 							  int file_type,
 							  float *version
 							  )
@@ -1454,7 +1454,7 @@ Open a polygon file for reading.
   Compare two strings.  Returns 1 if they are the same, 0 if not.
   ******************************************************************************/
   
-  int equal_strings(char *s1, char *s2)
+  int equal_strings(const char *s1, const char *s2)
   {
 	  
 	  while (*s1 && *s2)

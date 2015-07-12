@@ -29,10 +29,11 @@ DAMAGE.
 #ifndef __SPARSEMATRIX_HPP
 #define __SPARSEMATRIX_HPP
 
+#define ZERO_TESTING_JACOBI 1
+
+
 #include "Vector.h"
 #include "Array.h"
-
-#define NEW_MATRIX_CODE 0
 
 template <class T>
 struct MatrixEntry
@@ -100,6 +101,23 @@ public:
 	bool write( const char* fileName ) const;
 	bool read( FILE* fp );
 	bool read( const char* fileName );
+
+	template< class T2 >
+	static int SolveJacobi( const SparseMatrix<T>& M , const Vector<T2>& diagonal , const Vector<T2>& b , Vector<T2>& x , Vector<T2>& Mx , T2 sor , int threads=1 , int offset=0 );
+	template< class T2 >
+	static int SolveGS( const SparseMatrix<T>& M , const Vector<T2>& diagonal , const Vector<T2>& b , Vector<T2>& x , bool forward , int offset=0 );
+	template< class T2 >
+	static int SolveGS( const std::vector< std::vector< int > >& mcIndices , const SparseMatrix<T>& M , const Vector<T2>& diagonal , const Vector<T2>& b , Vector<T2>& x , bool forward , int threads=1 , int offset=0 );
+
+	template< class T2 >
+	static int SolveJacobi( const SparseMatrix<T>& M , const Vector<T2>& b , Vector<T2>& x , Vector<T2>& Mx , T2 sor , int threads=1 , int offset=0 );
+	template< class T2 >
+	static int SolveGS( const SparseMatrix<T>& M , const Vector<T2>& b , Vector<T2>& x , bool forward , int offset=0 );
+	template< class T2 >
+	static int SolveGS( const std::vector< std::vector< int > >& mcIndices , const SparseMatrix<T>& M , const Vector<T2>& b , Vector<T2>& x , bool forward , int threads=1 , int offset=0 );
+
+	template< class T2 >
+	void getDiagonal( Vector< T2 >& diagonal , int threads=1 , int offset=0 ) const;
 };
 
 
@@ -143,13 +161,8 @@ public:
 	template< class T2 >
 	Vector< T2 > Multiply( const Vector<T2>& V ) const;
 
-#if NEW_MATRIX_CODE
-	template< class T2 >
-	void Multiply( const Vector<T2>& In, Vector<T2>& Out , bool addDCTerm=false , int threads=1 ) const;
-#else // !NEW_MATRIX_CODE
 	template< class T2 >
 	void Multiply( const Vector<T2>& In, Vector<T2>& Out , bool addDCTerm=false ) const;
-#endif // NEW_MATRIX_CODE
 
 	template< class T2 >
 	void Multiply( const Vector<T2>& In, Vector<T2>& Out , MapReduceVector< T2 >& OutScratch , bool addDCTerm=false ) const;
@@ -158,19 +171,45 @@ public:
 	void Multiply( const Vector<T2>& In, Vector<T2>& Out , std::vector< T2* >& OutScratch , const std::vector< int >& bounds ) const;
 
 	template< class T2 >
-	static int Solve( const SparseSymmetricMatrix<T>& M , const Vector<T2>& b , int iters , Vector<T2>& solution , T2 eps=1e-8 , int reset=1 , int threads=0  , bool addDCTerm=false , bool solveNormal=false );
+	static int SolveCG( const SparseSymmetricMatrix<T>& M , const Vector<T2>& b , int iters , Vector<T2>& x ,                                T2 eps=1e-8 , int reset=1 , int threads=0  , bool addDCTerm=false , bool solveNormal=false );
 
 	template< class T2 >
-	static int Solve( const SparseSymmetricMatrix<T>& M , const Vector<T2>& b , int iters , Vector<T2>& solution , MapReduceVector<T2>& scratch , T2 eps=1e-8 , int reset=1 , bool addDCTerm=false , bool solveNormal=false );
+	static int SolveCG( const SparseSymmetricMatrix<T>& M , const Vector<T2>& b , int iters , Vector<T2>& x , MapReduceVector<T2>& scratch , T2 eps=1e-8 , int reset=1 ,                  bool addDCTerm=false , bool solveNormal=false );
 #ifdef WIN32
 	template< class T2 >
-	static int SolveAtomic( const SparseSymmetricMatrix<T>& M , const Vector<T2>& b , int iters , Vector<T2>& solution , T2 eps=1e-8 , int reset=1 , int threads=0  , bool solveNormal=false );
+	static int SolveCGAtomic( const SparseSymmetricMatrix<T>& M , const Vector<T2>& b , int iters , Vector<T2>& x , T2 eps=1e-8 , int reset=1 , int threads=0  , bool solveNormal=false );
 #endif // WIN32
-	template<class T2>
-	static int Solve( const SparseSymmetricMatrix<T>& M , const Vector<T2>& diagonal , const Vector<T2>& b , int iters , Vector<T2>& solution , int reset=1 );
+	template< class T2 >
+	static int SolveJacobi( const SparseSymmetricMatrix<T>& M , const Vector<T2>& diagonal , const Vector<T2>& b ,             Vector<T2>& x , MapReduceVector<T2>& scratch , Vector<T2>& Mx , T2 sor        , int reset );
+	template< class T2 >
+	static int SolveJacobi( const SparseSymmetricMatrix<T>& M ,                              const Vector<T2>& b , int iters , Vector<T2>& x , MapReduceVector<T2>& scratch ,                  T2 sor=T2(1.) , int reset=1 );
+	template< class T2 >
+	static int SolveJacobi( const SparseSymmetricMatrix<T>& M , const Vector<T2>& diagonal , const Vector<T2>& b ,             Vector<T2>& x ,                                Vector<T2>& Mx , T2 sor        , int reset );
+	template< class T2 >
+	static int SolveJacobi( const SparseSymmetricMatrix<T>& M ,                              const Vector<T2>& b , int iters , Vector<T2>& x ,                                                 T2 sor=T2(1.) , int reset=1 );
+
+	enum
+	{
+		ORDERING_UPPER_TRIANGULAR ,
+		ORDERING_LOWER_TRIANGULAR ,
+		ORDERING_NONE
+	};
+	template< class T2 >
+	static int SolveGS( const std::vector< std::vector< int > >& mcIndices , const SparseSymmetricMatrix<T>& M , const Vector<T2>& diagonal , const Vector<T2>& b ,             Vector<T2>& x , MapReduceVector<T2>& scratch , Vector<T2>& Mx , Vector<T2>& dx , bool forward , int reset   );
+	template< class T2 >
+	static int SolveGS( const std::vector< std::vector< int > >& mcIndices , const SparseSymmetricMatrix<T>& M ,                              const Vector<T2>& b , int iters , Vector<T2>& x , MapReduceVector<T2>& scratch ,                                   bool forward , int reset=1 );
 
 	template< class T2 >
-	void getDiagonal( Vector< T2 >& diagonal ) const;
+	static int SolveGS( const SparseSymmetricMatrix<T>& M , const Vector<T2>& diagonal , const Vector<T2>& b ,             Vector<T2>& x , MapReduceVector<T2>& scratch , Vector<T2>& Mx , Vector<T2>& dx , bool forward , int reset   , int ordering );
+	template< class T2 >
+	static int SolveGS( const SparseSymmetricMatrix<T>& M ,                              const Vector<T2>& b , int iters , Vector<T2>& x , MapReduceVector<T2>& scratch ,                                   bool forward , int reset=1 , int ordering=ORDERING_NONE );
+	template< class T2 >
+	static int SolveGS( const SparseSymmetricMatrix<T>& M , const Vector<T2>& diagonal , const Vector<T2>& b ,             Vector<T2>& x ,                                Vector<T2>& Mx , Vector<T2>& dx , bool forward , int reset   , int ordering );
+	template< class T2 >
+	static int SolveGS( const SparseSymmetricMatrix<T>& M ,                              const Vector<T2>& b , int iters , Vector<T2>& x ,                                                                  bool forward , int reset=1 , int ordering=ORDERING_NONE );
+
+	template< class T2 >
+	void getDiagonal( Vector< T2 >& diagonal , int threads=1 ) const;
 };
 
 #include "SparseMatrix.inl"

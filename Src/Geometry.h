@@ -29,7 +29,6 @@ DAMAGE.
 #ifndef GEOMETRY_INCLUDED
 #define GEOMETRY_INCLUDED
 
-
 #include <math.h>
 #include <vector>
 #include "Hash.h"
@@ -42,18 +41,21 @@ struct Point3D
 {
 	Real coords[3];
 	Point3D( void ) { coords[0] = coords[1] = coords[2] = Real(0); }
-	Point3D( Real v0 , Real v1 , Real v2 ){ coords[0] = v0 , coords[1] = v1 , coords[2] = v2; }
-	template< class Real2 > Point3D( const Point3D< Real2 >& p ){ coords[0] = Real( p[0] ) , coords[1] = Real( p[1] ) , coords[2] = Real( p[2] ); }
+	template< class _Real > Point3D( _Real v0 , _Real v1 , _Real v2 ){ coords[0] = Real(v0) , coords[1] = Real(v1) , coords[2] = Real(v2); }
+	template< class _Real > Point3D( const Point3D< _Real >& p ){ coords[0] = Real( p[0] ) , coords[1] = Real( p[1] ) , coords[2] = Real( p[2] ); }
 	inline       Real& operator[] ( int i )       { return coords[i]; }
 	inline const Real& operator[] ( int i ) const { return coords[i]; }
-	inline Point3D& operator += ( Point3D p ){ coords[0] += p.coords[0] , coords[1] += p.coords[1] , coords[2] += p.coords[2] ; return *this; }
-	inline Point3D& operator -= ( Point3D p ){ coords[0] -= p.coords[0] , coords[1] -= p.coords[1] , coords[2] -= p.coords[2] ; return *this; }
-	inline Point3D& operator *= ( Real r ){ coords[0] *= r , coords[1] *= r , coords[2] *= r ; return *this; }
-	inline Point3D& operator /= ( Real r ){ coords[0] /= r , coords[1] /= r , coords[2] /= r ; return *this; }
-	inline Point3D  operator +  ( Point3D p ) const { Point3D q ; q.coords[0] = coords[0] + p.coords[0] , q.coords[1] = coords[1] + p.coords[1] , q.coords[2] = coords[2] + p.coords[2] ; return q; }
-	inline Point3D  operator -  ( Point3D p ) const { Point3D q ; q.coords[0] = coords[0] - p.coords[0] , q.coords[1] = coords[1] - p.coords[1] , q.coords[2] = coords[2] - p.coords[2] ; return q; }
-	inline Point3D  operator *  ( Real r ) const { Point3D q ; q.coords[0] = coords[0] * r , q.coords[1] = coords[1] * r , q.coords[2] = coords[2] * r ; return q; }
-	inline Point3D  operator /  ( Real r ) const { return (*this) * ( Real(1.)/r ); }
+	inline Point3D  operator - ( void ) const { Point3D q ; q.coords[0] = -coords[0] , q.coords[1] = -coords[1] , q.coords[2] = -coords[2] ; return q; }
+
+	template< class _Real > inline Point3D& operator += ( Point3D< _Real > p ){ coords[0] += Real(p.coords[0]) , coords[1] += Real(p.coords[1]) , coords[2] += Real(p.coords[2]) ; return *this; }
+	template< class _Real > inline Point3D  operator +  ( Point3D< _Real > p ) const { Point3D q ; q.coords[0] = coords[0] + Real(p.coords[0]) , q.coords[1] = coords[1] + Real(p.coords[1]) , q.coords[2] = coords[2] + Real(p.coords[2]) ; return q; }
+	template< class _Real > inline Point3D& operator *= ( _Real r ) { coords[0] *= Real(r) , coords[1] *= Real(r) , coords[2] *= Real(r) ; return *this; }
+	template< class _Real > inline Point3D  operator *  ( _Real r ) const { Point3D q ; q.coords[0] = coords[0] * Real(r) , q.coords[1] = coords[1] * Real(r) , q.coords[2] = coords[2] * Real(r) ; return q; }
+
+	template< class _Real > inline Point3D& operator -= ( Point3D< _Real > p ){ return ( (*this)+=(-p) ); }
+	template< class _Real > inline Point3D  operator -  ( Point3D< _Real > p ) const { return (*this)+(-p); }
+	template< class _Real > inline Point3D& operator /= ( _Real r ){ return ( (*this)*=Real(1./r) ); }
+	template< class _Real > inline Point3D  operator /  ( _Real r ) const { return (*this) * ( Real(1.)/r ); }
 
 	static Real Dot( const Point3D< Real >& p1 , const Point3D< Real >& p2 ){ return p1.coords[0]*p2.coords[0] + p1.coords[1]*p2.coords[1] + p1.coords[2]*p2.coords[2]; }
 	template< class Real1 , class Real2 >
@@ -73,10 +75,10 @@ struct XForm3x3
 	}
 	Real& operator() ( int i , int j ){ return coords[i][j]; }
 	const Real& operator() ( int i , int j ) const { return coords[i][j]; }
-	Point3D< Real > operator * ( const Point3D< Real >& p ) const
+	template< class _Real > Point3D< _Real > operator * ( const Point3D< _Real >& p ) const
 	{
-		Point3D< Real > q;
-		for( int i=0 ; i<3 ; i++ ) for( int j=0 ; j<3 ; j++ ) q[i] += coords[j][i] * p[j];
+		Point3D< _Real > q;
+		for( int i=0 ; i<3 ; i++ ) for( int j=0 ; j<3 ; j++ ) q[i] += _Real( coords[j][i] * p[j] );
 		return q;
 	}
 	XForm3x3 operator * ( const XForm3x3& m ) const
@@ -120,13 +122,13 @@ struct XForm4x4
 	}
 	Real& operator() ( int i , int j ){ return coords[i][j]; }
 	const Real& operator() ( int i , int j ) const { return coords[i][j]; }
-	Point3D< Real > operator * ( const Point3D< Real >& p ) const
+	template< class _Real > Point3D< _Real > operator * ( const Point3D< _Real >& p ) const
 	{
-		Point3D< Real > q;
+		Point3D< _Real > q;
 		for( int i=0 ; i<3 ; i++ )
 		{
-			for( int j=0 ; j<3 ; j++ ) q[i] += coords[j][i] * p[j];
-			q[i] += coords[3][i];
+			for( int j=0 ; j<3 ; j++ ) q[i] += (_Real)( coords[j][i] * p[j] );
+			q[i] += (_Real)coords[3][i];
 		}
 		return q;
 	}

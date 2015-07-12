@@ -130,6 +130,34 @@ Vector<T>& Vector<T>::operator /= (const T& A)
 	for (size_t i=0; i<m_N; i++) m_pV[i] /= A;
 	return *this;
 }
+
+template<class T>
+Vector<T> Vector<T>::operator + (const T& A) const
+{
+	Vector V(*this);
+	for (size_t i=0; i<m_N; i++) V.m_pV[i] += A;
+	return V;
+}
+template<class T>
+Vector<T>& Vector<T>::operator += (const T& A)
+{
+	for (size_t i=0; i<m_N; i++) m_pV[i] += A;
+	return *this;
+}
+template<class T>
+Vector<T> Vector<T>::operator - (const T& A) const
+{
+	Vector V(*this);
+	for (size_t i=0; i<m_N; i++) V.m_pV[i] -= A;
+	return V;
+}
+template<class T>
+Vector<T>& Vector<T>::operator -= (const T& A)
+{
+	for (size_t i=0; i<m_N; i++) m_pV[i] -= A;
+	return *this;
+}
+
 template<class T>
 Vector<T> Vector<T>::operator + (const Vector<T>& V0) const
 {
@@ -210,6 +238,13 @@ void Vector<T>::Normalize()
 	T N = 1.0f/Norm(2);
 	for (size_t i = 0; i<m_N; i++)
 		m_pV[i] *= N;
+}
+template< class T >
+T Vector< T >::Average( void ) const
+{
+	T N = T();
+	for( size_t i=0 ; i<m_N ; i++ ) N += m_pV[i];
+	return N / m_N;	
 }
 template<class T>
 T Vector<T>::Length() const

@@ -29,7 +29,6 @@ DAMAGE.
 #ifndef BSPLINE_DATA_INCLUDED
 #define BSPLINE_DATA_INCLUDED
 
-
 #include "PPolynomial.h"
 #include "Array.h"
 
@@ -37,14 +36,13 @@ template< int Degree >
 struct BSplineElementCoefficients
 {
 	int coeffs[Degree+1];
-	BSplineElementCoefficients( void ) { memset( coeffs , 0 , sizeof( int ) * ( Degree+1 ) ); }
+	BSplineElementCoefficients( void ){ memset( coeffs , 0 , sizeof( int ) * ( Degree+1 ) ); }
 	int& operator[]( int idx ){ return coeffs[idx]; }
 	const int& operator[]( int idx ) const { return coeffs[idx]; }
 };
 template< int Degree >
 struct BSplineElements : public std::vector< BSplineElementCoefficients< Degree > >
 {
-	using std::vector< BSplineElementCoefficients< Degree > >::size;
 	static const int _off = (Degree+1)/2;
 	void _addLeft ( int offset , int boundary );
 	void _addRight( int offset , int boundary );
@@ -75,36 +73,15 @@ public:
 	}
 };
 
-template< int Degree , class Real >
+template< int Degree >
 class BSplineData
 {
-	bool _useDotRatios;
 	int _boundaryType;
 	double _vvIntegrals[Degree+1][Degree+1];
 	double _vdIntegrals[Degree+1][Degree  ];
 	double _dvIntegrals[Degree  ][Degree+1];
 	double _ddIntegrals[Degree  ][Degree  ];
 
-	struct _CCIntegrals
-	{
-		double integrals[2*Degree+1][2*Degree+1];
-		_CCIntegrals( void ){ memset( integrals , 0 , sizeof(integrals) ); }
-	};
-	struct _CPIntegrals
-	{
-		double integrals[(2*Degree+1)*2][2*Degree+1];
-		_CPIntegrals( void ){ memset( integrals , 0 , sizeof(integrals) ); }
-	};
-	template< bool D1 , bool D2 >
-	double _dot( int depth1 , int off1 , int depth2 , int off2 , bool inset=false ) const;
-	Pointer( _CCIntegrals ) _cc_vv_Integrals;
-	Pointer( _CCIntegrals ) _cc_vd_Integrals;
-	Pointer( _CCIntegrals ) _cc_dv_Integrals;
-	Pointer( _CCIntegrals ) _cc_dd_Integrals;
-	Pointer( _CPIntegrals ) _cp_vv_Integrals;
-	Pointer( _CPIntegrals ) _cp_vd_Integrals;
-	Pointer( _CPIntegrals ) _cp_dv_Integrals;
-	Pointer( _CPIntegrals ) _cp_dd_Integrals;
 public:
 	struct Integrator
 	{
@@ -118,8 +95,8 @@ public:
 		std::vector< IntegralTables > iTables;
 		double dot( int depth , int off1 , int off2 , bool d1 , bool d2 , bool childParent=false ) const;
 	};
-	void setIntegrator( Integrator& integrator , bool inset ) const;
-
+	double dot( int depth1 , int off1 , int depth2 , int off2 , bool d1 , bool d2 , bool inset=false ) const;
+	void setIntegrator( Integrator& integrator , bool inset , bool useDotRatios=false ) const;
 	template< int Radius >
 	struct CenterEvaluator
 	{
@@ -157,19 +134,9 @@ public:
 		BSplineComponents scale( double s ) const { BSplineComponents b ; for( int d=0 ; d<=Degree ; d++ ) b[d] = polys[d].scale(s) ; return b; }
 		BSplineComponents shift( double s ) const { BSplineComponents b ; for( int d=0 ; d<=Degree ; d++ ) b[d] = polys[d].shift(s) ; return b; }
 	};
-	const static int  VV_DOT_FLAG = 1;
-	const static int  DV_DOT_FLAG = 2;
-	const static int  DD_DOT_FLAG = 4;
-	const static int   VALUE_FLAG = 1;
-	const static int D_VALUE_FLAG = 2;
 
 	int depth;
 	size_t functionCount , sampleCount;
-	Pointer( Real ) vvDotTable;
-	Pointer( Real ) dvDotTable;
-	Pointer( Real ) ddDotTable;
-	Pointer( Real ) valueTables;
-	Pointer( Real ) dValueTables;
 	PPolynomial< Degree   >  baseFunction ,  leftBaseFunction ,  rightBaseFunction ,  leftRightBaseFunction;
 	PPolynomial< Degree-1 > dBaseFunction , dLeftBaseFunction , dRightBaseFunction , dLeftRightBaseFunction;
 	BSplineComponents baseBSpline , leftBSpline , rightBSpline , leftRightBSpline;
@@ -177,31 +144,45 @@ public:
 	Pointer( BSplineComponents ) baseBSplines;
 
 	BSplineData( void );
-	~BSplineData( void );
 
-	virtual void   setDotTables( int flags , bool full , bool inset=false );
-	virtual void clearDotTables( int flags );
+	const static int  VV_DOT_FLAG = 1;
+	const static int  DV_DOT_FLAG = 2;
+	const static int  DD_DOT_FLAG = 4;
+	const static int   VALUE_FLAG = 1;
+	const static int D_VALUE_FLAG = 2;
+	template< class Real >
+	struct DotTables
+	{
+		size_t functionCount;
+		Pointer( Real ) vvDotTable;
+		Pointer( Real ) dvDotTable;
+		Pointer( Real ) ddDotTable;
 
-	virtual void   setValueTables( int flags , double smooth=0 );
-	virtual void   setValueTables( int flags , double valueSmooth , double normalSmooth );
-	virtual void clearValueTables( void );
+		DotTables( void );
+		~DotTables( void );
 
-	void setSampleSpan( int idx , int& start , int& end , double smooth=0 ) const;
+		inline size_t Index( int i1 , int i2 ) const;
+		static inline size_t SymmetricIndex( int i1 , int i2 );
+		static inline int SymmetricIndex( int i1 , int i2 , size_t& index );
+	};
+	template< class Real >
+	struct ValueTables
+	{
+		size_t functionCount , sampleCount;
+		Pointer( Real ) valueTable;
+		Pointer( Real ) dValueTable;
 
-	/********************************************************
-	 * Sets the translates and scales of the basis function
-	 * up to the prescribed depth
-	 * <maxDepth> the maximum depth
-	 * <useDotRatios> specifies if dot-products of derivatives
-	 * should be pre-divided by function integrals
-	 * <reflectBoundary> spcifies if function space should be
-	 * forced to be reflectively symmetric across the boundary
-	 ********************************************************/
-	void set( int maxDepth , bool useDotRatios=true , int boundaryType=BSplineElements< Degree >::NONE );
+		ValueTables( void );
+		~ValueTables( void );
 
-	inline size_t Index( int i1 , int i2 ) const;
-	static inline size_t SymmetricIndex( int i1 , int i2 );
-	static inline int SymmetricIndex( int i1 , int i2 , size_t& index );
+		inline size_t Index( int i1 , int i2 ) const;
+		void setSampleSpan( int idx , int& start , int& end , double smooth=0 ) const;
+	};
+	void set( int maxDepth , int boundaryType=BSplineElements< Degree >::NONE );
+	template< class Real >
+	DotTables< Real > getDotTables( int flags , bool useDotRatios=true , bool inset=false ) const;
+	template< class Real >
+	ValueTables< Real > getValueTables( int flags , double valueSmooth=0 , double normalSmooth=0 ) const;
 };
 
 template< int Degree1 , int Degree2 > void SetBSplineElementIntegrals( double integrals[Degree1+1][Degree2+1] );

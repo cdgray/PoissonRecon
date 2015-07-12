@@ -32,7 +32,8 @@ DAMAGE.
 #ifdef WIN32
 
 #include <Windows.h>
-class MemoryInfo{
+class MemoryInfo
+{
 public:
 	size_t TotalPhysicalMemory;
 	size_t FreePhysicalMemory;

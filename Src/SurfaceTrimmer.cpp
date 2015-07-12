@@ -30,6 +30,7 @@ DAMAGE.
 #include <stdlib.h>
 #include <float.h>
 #include <omp.h>
+#include <algorithm>
 #include "CmdLineParser.h"
 #include "Geometry.h"
 #include "Ply.h"

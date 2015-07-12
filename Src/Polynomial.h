@@ -84,6 +84,7 @@ public:
 	static void AddScaled(const Polynomial& p1,double w1,const Polynomial& p2,Polynomial& q);
 
 	void getSolutions(double c,std::vector<double>& roots,double EPS) const;
+	int getSolutions( double c , double* roots , double EPS ) const;
 
 	static Polynomial BSplineComponent( int i );
 };

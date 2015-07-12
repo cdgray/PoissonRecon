@@ -531,7 +531,7 @@ int CoredFileMeshData< Vertex >::addOutOfCorePoint( const Vertex& p )
 template< class Vertex >
 int CoredFileMeshData< Vertex >::addPolygon( const std::vector< CoredVertexIndex >& vertices )
 {
-	int pSize = (int)( vertices.size() );
+	int pSize = int( vertices.size() );
 	std::vector< int > polygon( pSize );
 	for( int i=0 ; i<pSize ; i++ ) 
 		if( vertices[i].inCore ) polygon[i] =  vertices[i].idx;

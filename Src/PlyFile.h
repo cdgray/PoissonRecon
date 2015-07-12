@@ -186,8 +186,8 @@ extern char *my_alloc();
 
 /*** delcaration of routines ***/
 
-extern PlyFile *ply_write(FILE *, int, char **, int);
-extern PlyFile *ply_open_for_writing(char *, int, char **, int, float *);
+extern PlyFile *ply_write(FILE *, int, const char **, int);
+extern PlyFile *ply_open_for_writing(char *, int, const char **, int, float *);
 extern void ply_describe_element(PlyFile *, char *, int, int, PlyProperty *);
 extern void ply_describe_property(PlyFile *, char *, PlyProperty *);
 extern void ply_element_count(PlyFile *, char *, int);
@@ -213,7 +213,7 @@ extern void ply_put_other_elements (PlyFile *);
 extern void ply_free_other_elements (PlyOtherElems *);
 extern void ply_describe_other_properties(PlyFile *, PlyOtherProp *, int);
 
-extern int equal_strings(char *, char *);
+extern int equal_strings(const char *, const char *);
 
 #ifdef __cplusplus
 }

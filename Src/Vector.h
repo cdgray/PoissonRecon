@@ -56,11 +56,15 @@ public:
 
 	Vector operator * (const T& A) const;
 	Vector operator / (const T& A) const;
+	Vector operator - (const T& A) const;
+	Vector operator + (const T& A) const;
 	Vector operator - (const Vector& V) const;
 	Vector operator + (const Vector& V) const;
 
 	Vector& operator *= ( const T& A );
 	Vector& operator /= ( const T& A );
+	Vector& operator += ( const T& A );
+	Vector& operator -= ( const T& A );
 	Vector& operator += ( const Vector& V );
 	Vector& operator -= ( const Vector& V );
 
@@ -78,6 +82,8 @@ public:
 
 	T Length() const;
 
+	T Average() const;
+
 	T Norm( size_t Ln ) const;
 	void Normalize();
 
@@ -92,6 +98,13 @@ protected:
 
 };
 
+#if ARRAY_DEBUG
+template< class C >      Array< C > GetPointer(       Vector< C >& v ){ return      Array< C >::FromPointer( &v[0] , v.size() ); }
+template< class C > ConstArray< C > GetPointer( const Vector< C >& v ){ return ConstArray< C >::FromPointer( &v[0] , v.size() ); }
+#else // !ARRAY_DEBUG
+template< class C >       C* GetPointer(       Vector< C >& v ){ return &v[0]; }
+template< class C > const C* GetPointer( const Vector< C >& v ){ return &v[0]; }
+#endif // ARRAY_DEBUG
 
 #include "Vector.inl"
 

@@ -184,8 +184,8 @@ extern char *my_alloc();
 
 /*** delcaration of routines ***/
 
-extern PlyFile *ply_write(FILE *, int, char **, int);
-extern PlyFile *ply_open_for_writing(char *, int, char **, int, float *);
+extern PlyFile *ply_write(FILE *, int, const char **, int);
+extern PlyFile *ply_open_for_writing(char *, int, const char **, int, float *);
 extern void ply_describe_element(PlyFile *, char *, int, int, PlyProperty *);
 extern void ply_describe_property(PlyFile *, char *, PlyProperty *);
 extern void ply_element_count(PlyFile *, char *, int);
@@ -211,7 +211,7 @@ extern void ply_put_other_elements (PlyFile *);
 extern void ply_free_other_elements (PlyOtherElems *);
 extern void ply_describe_other_properties(PlyFile *, PlyOtherProp *, int);
 
-extern int equal_strings(char *, char *);
+extern int equal_strings(const char *, const char *);
 
 #ifdef __cplusplus
 }
@@ -239,25 +239,18 @@ public:
 
 	Point3D< Real > point;
 
-#if 1
 	PlyVertex( void ) { ; }
 	PlyVertex( Point3D< Real > p ) { point=p; }
 	PlyVertex operator + ( PlyVertex p ) const { return PlyVertex( point+p.point ); }
 	PlyVertex operator - ( PlyVertex p ) const { return PlyVertex( point-p.point ); }
-	PlyVertex operator * ( Real s ) const { return PlyVertex( point*s ); }
-	PlyVertex operator / ( Real s ) const { return PlyVertex( point/s ); }
+	template< class _Real > PlyVertex operator * ( _Real s ) const { return PlyVertex( point*s ); }
+	template< class _Real > PlyVertex operator / ( _Real s ) const { return PlyVertex( point/s ); }
 	PlyVertex& operator += ( PlyVertex p ) { point += p.point ; return *this; }
 	PlyVertex& operator -= ( PlyVertex p ) { point -= p.point ; return *this; }
-	PlyVertex& operator *= ( Real s ) { point *= s ; return *this; }
-	PlyVertex& operator /= ( Real s ) { point /= s ; return *this; }
-#else
-	operator Point3D<Real>& ()					{return point;}
-	operator const Point3D<Real>& () const		{return point;}
-	PlyVertex(void)								{point.coords[0]=point.coords[1]=point.coords[2]=0;}
-	PlyVertex(const Point3D<Real>& p)			{point=p;}
-#endif
+	template< class _Real > PlyVertex& operator *= ( _Real s ) { point *= s ; return *this; }
+	template< class _Real > PlyVertex& operator /= ( _Real s ) { point /= s ; return *this; }
 };
-template< class Real > PlyVertex< Real > operator * ( XForm4x4< Real > xForm , PlyVertex< Real > v ) { return PlyVertex< Real >( xForm * v.point ); }
+template< class Real , class _Real > PlyVertex< Real > operator * ( XForm4x4< _Real > xForm , PlyVertex< Real > v ) { return PlyVertex< Real >( xForm * v.point ); }
 template<>
 PlyProperty PlyVertex< float >::Properties[]=
 {
@@ -282,25 +275,18 @@ public:
 	Point3D<Real> point;
 	Real value;
 
-#if 1
 	PlyValueVertex( void ) : value( Real(0) ) { ; }
 	PlyValueVertex( Point3D< Real > p , Real v ) : point(p) , value(v) { ; }
 	PlyValueVertex operator + ( PlyValueVertex p ) const { return PlyValueVertex( point+p.point , value+p.value ); }
 	PlyValueVertex operator - ( PlyValueVertex p ) const { return PlyValueVertex( point-p.value , value-p.value ); }
-	PlyValueVertex operator * ( Real s ) const { return PlyValueVertex( point*s , value*s ); }
-	PlyValueVertex operator / ( Real s ) const { return PlyValueVertex( point/s , value/s ); }
+	template< class _Real > PlyValueVertex operator * ( _Real s ) const { return PlyValueVertex( point*s , Real(value*s) ); }
+	template< class _Real > PlyValueVertex operator / ( _Real s ) const { return PlyValueVertex( point/s , Real(value/s) ); }
 	PlyValueVertex& operator += ( PlyValueVertex p ) { point += p.point , value += p.value ; return *this; }
 	PlyValueVertex& operator -= ( PlyValueVertex p ) { point -= p.point , value -= p.value ; return *this; }
-	PlyValueVertex& operator *= ( Real s ) { point *= s , value *= s ; return *this; }
-	PlyValueVertex& operator /= ( Real s ) { point /= s , value /= s ; return *this; }
-#else
-	operator Point3D<Real>& ()				{return point;}
-	operator const Point3D<Real>& () const	{return point;}
-	PlyValueVertex(void)					{point.coords[0]=point.coords[1]=point.coords[2]=0;value=0;}
-	PlyValueVertex(const Point3D<Real>& p)	{point=p;}
-#endif
+	template< class _Real > PlyValueVertex& operator *= ( _Real s ) { point *= s , value *= Real(s) ; return *this; }
+	template< class _Real > PlyValueVertex& operator /= ( _Real s ) { point /= s , value /= Real(s) ; return *this; }
 };
-template< class Real > PlyValueVertex< Real > operator * ( XForm4x4< Real > xForm , PlyValueVertex< Real > v ) { return PlyValueVertex< Real >( xForm * v.point , v.value ); }
+template< class Real , class _Real > PlyValueVertex< Real > operator * ( XForm4x4< _Real > xForm , PlyValueVertex< Real > v ) { return PlyValueVertex< Real >( xForm * v.point , v.value ); }
 template< >
 PlyProperty PlyValueVertex< float >::Properties[]=
 {
@@ -326,25 +312,18 @@ public:
 
 	Point3D<Real> point , normal;
 
-#if 1
 	PlyOrientedVertex( void ) { ; }
 	PlyOrientedVertex( Point3D< Real > p , Point3D< Real > n ) : point(p) , normal(n) { ; }
   	PlyOrientedVertex operator + ( PlyOrientedVertex p ) const { return PlyOrientedVertex( point+p.point , normal+p.normal ); }
 	PlyOrientedVertex operator - ( PlyOrientedVertex p ) const { return PlyOrientedVertex( point-p.value , normal-p.normal ); }
-	PlyOrientedVertex operator * ( Real s ) const { return PlyOrientedVertex( point*s , normal*s ); }
-	PlyOrientedVertex operator / ( Real s ) const { return PlyOrientedVertex( point/s , normal/s ); }
+	template< class _Real > PlyOrientedVertex operator * ( _Real s ) const { return PlyOrientedVertex( point*s , normal*s ); }
+	template< class _Real > PlyOrientedVertex operator / ( _Real s ) const { return PlyOrientedVertex( point/s , normal/s ); }
 	PlyOrientedVertex& operator += ( PlyOrientedVertex p ) { point += p.point , normal += p.normal ; return *this; }
 	PlyOrientedVertex& operator -= ( PlyOrientedVertex p ) { point -= p.point , normal -= p.normal ; return *this; }
-	PlyOrientedVertex& operator *= ( Real s ) { point *= s , normal *= s ; return *this; }
-	PlyOrientedVertex& operator /= ( Real s ) { point /= s , normal /= s ; return *this; }
-#else
-	operator Point3D<Real>& ()					{return point;}
-	operator const Point3D<Real>& () const		{return point;}
-	PlyOrientedVertex(void)						{point.coords[0]=point.coords[1]=point.coords[2]=normal.coords[0]=normal.coords[1]=normal.coords[2]=0;}
-	PlyOrientedVertex(const Point3D<Real>& p)	{point=p;}
-#endif
+	template< class _Real > PlyOrientedVertex& operator *= ( _Real s ) { point *= s , normal *= s ; return *this; }
+	template< class _Real > PlyOrientedVertex& operator /= ( _Real s ) { point /= s , normal /= s ; return *this; }
 };
-template< class Real > PlyOrientedVertex< Real > operator * ( XForm4x4< Real > xForm , PlyOrientedVertex< Real > v ) { return PlyOrientedVertex< Real >( xForm * v.point , xForm.inverse().transpose() * v.normal ); }
+template< class Real , class _Real > PlyOrientedVertex< Real > operator * ( XForm4x4< _Real > xForm , PlyOrientedVertex< Real > v ) { return PlyOrientedVertex< Real >( xForm * v.point , xForm.inverse().transpose() * v.normal ); }
 template<>
 PlyProperty PlyOrientedVertex< float >::Properties[]=
 {
@@ -401,11 +380,11 @@ PlyProperty PlyColorVertex< double >::Properties[]=
 	{"blue",	PLY_UCHAR, PLY_UCHAR, int(offsetof(PlyColorVertex,color[2])),	0, 0, 0, 0}
 };
 
-template< class Vertex >
-int PlyWritePolygons( char* fileName , CoredMeshData< Vertex >*  mesh , int file_type , const Point3D< float >& translate , float scale , char** comments=NULL , int commentNum=0 , XForm4x4< float > xForm=XForm4x4< float >::Identity() );
+template< class Vertex , class Real >
+int PlyWritePolygons( char* fileName , CoredMeshData< Vertex >*  mesh , int file_type , const Point3D< float >& translate , float scale , char** comments=NULL , int commentNum=0 , XForm4x4< Real > xForm=XForm4x4< Real >::Identity() );
 
-template< class Vertex >
-int PlyWritePolygons( char* fileName , CoredMeshData< Vertex >*  mesh , int file_type , char** comments=NULL , int commentNum=0 , XForm4x4< float > xForm=XForm4x4< float >::Identity() );
+template< class Vertex , class Real >
+int PlyWritePolygons( char* fileName , CoredMeshData< Vertex >*  mesh , int file_type , char** comments=NULL , int commentNum=0 , XForm4x4< Real > xForm=XForm4x4< Real >::Identity() );
 
 template<class Vertex>
 int PlyReadPolygons(char* fileName,
@@ -431,7 +410,7 @@ int PlyWritePolygons(char* fileName,
 	int nr_vertices=int(vertices.size());
 	int nr_faces=int(polygons.size());
 	float version;
-	char *elem_names[] = { "vertex" , "face" };
+	const char *elem_names[] = { "vertex" , "face" };
 	PlyFile *ply = ply_open_for_writing( fileName , 2 , elem_names , file_type , &version );
 	if (!ply){return 0;}
 	
@@ -593,17 +572,14 @@ int PlyReadPolygons(char* fileName,
 	return 1;
 }
 
-template< class Vertex >
-int PlyWritePolygons( char* fileName , CoredMeshData< Vertex >* mesh , int file_type , const Point3D<float>& translate , float scale , char** comments , int commentNum , XForm4x4< float > xForm )
+template< class Vertex , class Real >
+int PlyWritePolygons( char* fileName , CoredMeshData< Vertex >* mesh , int file_type , const Point3D<float>& translate , float scale , char** comments , int commentNum , XForm4x4< Real > xForm )
 {
-	XForm3x3< float > xFormN;
-	for( int i=0 ; i<3 ; i++ ) for( int j=0 ; j<3 ; j++ ) xFormN(i,j) = xForm(i,j);
-	xFormN = xFormN.transpose().inverse();
 	int i;
 	int nr_vertices=int(mesh->outOfCorePointCount()+mesh->inCorePoints.size());
 	int nr_faces=mesh->polygonCount();
 	float version;
-	char *elem_names[] = { "vertex" , "face" };
+	const char *elem_names[] = { "vertex" , "face" };
 	PlyFile *ply = ply_open_for_writing( fileName , 2 , elem_names , file_type , &version );
 	if( !ply ) return 0;
 
@@ -625,7 +601,6 @@ int PlyWritePolygons( char* fileName , CoredMeshData< Vertex >* mesh , int file_
 	
 	// write vertices
 	ply_put_element_setup( ply , "vertex" );
-	Point3D< float > p;
 	for( i=0 ; i<int( mesh->inCorePoints.size() ) ; i++ )
 	{
 		Vertex vertex = xForm * ( mesh->inCorePoints[i] * scale + translate );
@@ -661,17 +636,14 @@ int PlyWritePolygons( char* fileName , CoredMeshData< Vertex >* mesh , int file_
 	ply_close( ply );
 	return 1;
 }
-template< class Vertex >
-int PlyWritePolygons( char* fileName , CoredMeshData< Vertex >* mesh , int file_type , char** comments , int commentNum , XForm4x4< float > xForm )
+template< class Vertex , class Real >
+int PlyWritePolygons( char* fileName , CoredMeshData< Vertex >* mesh , int file_type , char** comments , int commentNum , XForm4x4< Real > xForm )
 {
-	XForm3x3< float > xFormN;
-	for( int i=0 ; i<3 ; i++ ) for( int j=0 ; j<3 ; j++ ) xFormN(i,j) = xForm(i,j);
-	xFormN = xFormN.transpose().inverse();
 	int i;
 	int nr_vertices=int(mesh->outOfCorePointCount()+mesh->inCorePoints.size());
 	int nr_faces=mesh->polygonCount();
 	float version;
-	char *elem_names[] = { "vertex" , "face" };
+	const char *elem_names[] = { "vertex" , "face" };
 	PlyFile *ply = ply_open_for_writing( fileName , 2 , elem_names , file_type , &version );
 	if( !ply ) return 0;
 
@@ -693,7 +665,6 @@ int PlyWritePolygons( char* fileName , CoredMeshData< Vertex >* mesh , int file_
 	
 	// write vertices
 	ply_put_element_setup( ply , "vertex" );
-	Point3D< float > p;
 	for( i=0 ; i<int( mesh->inCorePoints.size() ) ; i++ )
 	{
 		Vertex vertex = xForm * mesh->inCorePoints[i];
