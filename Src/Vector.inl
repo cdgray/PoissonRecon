@@ -237,6 +237,40 @@ T Vector<T>::Dot( const Vector<T>& V ) const
 	return V0;
 }
 
+template< class T >
+bool Vector< T >::read( const char* fileName )
+{
+	FILE* fp = fopen( fileName , "rb" );
+	if( !fp ) return false;
+	bool ret = read( fp );
+	fclose( fp );
+	return ret;
+}
+template< class T >
+bool Vector< T >::write( const char* fileName ) const
+{
+	FILE* fp = fopen( fileName , "wb" );
+	if( !fp ) return false;
+	bool ret = write( fp );
+	fclose( fp );
+	return ret;
+}
+template< class T >
+bool Vector< T >::read( FILE* fp )
+{
+	int d;
+	if( fread( &d , sizeof(int) , 1 , fp )!=1 ) return false;
+	Resize( d );
+	if( fread( &(*this)[0] , sizeof( T ) , d , fp )!=d ) return false;
+	return true;
+}
+template< class T >
+bool Vector< T >::write( FILE* fp ) const
+{
+	if( fwrite( &m_N , sizeof( int ) , 1 , fp )!=1 ) return false;
+	if( fwrite( &(*this)[0] , sizeof( T ) , m_N , fp )!=m_N ) return false;
+	return true;
+}
 
 
 /////////////

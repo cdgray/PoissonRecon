@@ -31,6 +31,7 @@ DAMAGE.
 
 #define MSVC_2010_FIX 1
 
+
 template<class Real>
 class BinaryNode
 {
@@ -39,7 +40,6 @@ public:
 	static inline int CornerCount( int depth ) { return (1<<depth)+1; }
 	static inline int CumulativeCenterCount( int maxDepth ) { return (1<<(maxDepth+1))-1; }
 	static inline int CumulativeCornerCount( int maxDepth ) { return (1<<(maxDepth+1))+maxDepth; }
-	static inline int Index( int depth , int offSet ) { return (1<<depth)+offSet-1; }
 	static inline int CenterIndex( int depth , int offSet ) { return (1<<depth)+offSet-1; }
 	static inline int CornerIndex( int depth , int offSet ) { return (1<<depth)+offSet+depth; }
 

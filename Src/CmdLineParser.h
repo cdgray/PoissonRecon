@@ -31,7 +31,6 @@ DAMAGE.
 #include <stdarg.h>
 #include <string.h>
 
-#include "Geometry.h"
 
 #ifdef WIN32
 int strcasecmp(char* c1,char* c2);
@@ -39,47 +38,83 @@ int strcasecmp(char* c1,char* c2);
 
 class cmdLineReadable{
 public:
-	int set;
-	cmdLineReadable(void);
+	bool set;
+	char* name;
+	cmdLineReadable(const char* name);
 	virtual ~cmdLineReadable(void);
 	virtual int read(char** argv,int argc);
+	virtual void writeValue(char* str);
 };
 
 class cmdLineInt : public cmdLineReadable {
 public:
 	int value;
-	cmdLineInt();
-	cmdLineInt(const int& v);
+	cmdLineInt(const char* name);
+	cmdLineInt(const char* name,const int& v);
 	int read(char** argv,int argc);
+	void writeValue(char* str);
 };
+template<int Dim>
+class cmdLineIntArray : public cmdLineReadable {
+public:
+	int values[Dim];
+	cmdLineIntArray(const char* name);
+	cmdLineIntArray(const char* name,const int v[Dim]);
+	int read(char** argv,int argc);
+	void writeValue(char* str);
+};
+
 class cmdLineFloat : public cmdLineReadable {
 public:
 	float value;
-	cmdLineFloat();
-	cmdLineFloat(const float& f);
+	cmdLineFloat(const char* name);
+	cmdLineFloat(const char* name,const float& f);
 	int read(char** argv,int argc);
+	void writeValue(char* str);
+};
+template<int Dim>
+class cmdLineFloatArray : public cmdLineReadable {
+public:
+	float values[Dim];
+	cmdLineFloatArray(const char* name);
+	cmdLineFloatArray(const char* name,const float f[Dim]);
+	int read(char** argv,int argc);
+	void writeValue(char* str);
 };
 class cmdLineString : public cmdLineReadable {
 public:
 	char* value;
-	cmdLineString();
+	cmdLineString(const char* name);
 	~cmdLineString();
 	int read(char** argv,int argc);
+	void writeValue(char* str);
 };
-class cmdLinePoint3D : public cmdLineReadable {
+class cmdLineStrings : public cmdLineReadable {
+	int Dim;
 public:
-	Point3D<float> value;
-	cmdLinePoint3D();
-	cmdLinePoint3D(const Point3D<float>& v);
-	cmdLinePoint3D(const float& v0,const float& v1,const float& v2);
+	char** values;
+	cmdLineStrings(const char* name,int Dim);
+	~cmdLineStrings(void);
 	int read(char** argv,int argc);
+	void writeValue(char* str);
+};
+template<int Dim>
+class cmdLineStringArray : public cmdLineReadable {
+public:
+	char* values[Dim];
+	cmdLineStringArray(const char* name);
+	~cmdLineStringArray();
+	int read(char** argv,int argc);
+	void writeValue(char* str);
 };
 
 // This reads the arguments in argc, matches them against "names" and sets
 // the values of "r" appropriately. Parameters start with "--"
-void cmdLineParse(int argc, char **argv,char** names,int num,cmdLineReadable** r,
-				  int dumpError=1);
+void cmdLineParse(int argc, char **argv,int num,cmdLineReadable** r,int dumpError=1);
 
 char* GetFileExtension(char* fileName);
+char* GetLocalFileName(char* fileName);
+char** ReadWords(const char* fileName,int& cnt);
 
+#include "CmdLineParser.inl"
 #endif // CMD_LINE_PARSER_INCLUDED

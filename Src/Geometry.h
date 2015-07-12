@@ -36,8 +36,22 @@ DAMAGE.
 template<class Real>
 Real Random(void);
 
-template<class Real>
-struct Point3D{Real coords[3];};
+template< class Real >
+struct Point3D
+{
+	Real coords[3];
+	Point3D( void ) { coords[0] = coords[1] = coords[2] = Real(0); }
+	inline       Real& operator[] ( int i )       { return coords[i]; }
+	inline const Real& operator[] ( int i ) const { return coords[i]; }
+	inline Point3D& operator += ( Point3D p ){ coords[0] += p.coords[0] , coords[1] += p.coords[1] , coords[2] += p.coords[2] ; return *this; }
+	inline Point3D& operator -= ( Point3D p ){ coords[0] -= p.coords[0] , coords[1] -= p.coords[1] , coords[2] -= p.coords[2] ; return *this; }
+	inline Point3D& operator *= ( Real r ){ coords[0] *= r , coords[1] *= r , coords[2] *= r ; return *this; }
+	inline Point3D& operator /= ( Real r ){ coords[0] /= r , coords[1] /= r , coords[2] /= r ; return *this; }
+	inline Point3D  operator +  ( Point3D p ) const { Point3D q ; q.coords[0] = coords[0] + p.coords[0] , q.coords[1] = coords[1] + p.coords[1] , q.coords[2] = coords[2] + p.coords[2] ; return q; }
+	inline Point3D  operator -  ( Point3D p ) const { Point3D q ; q.coords[0] = coords[0] - p.coords[0] , q.coords[1] = coords[1] - p.coords[1] , q.coords[2] = coords[2] - p.coords[2] ; return q; }
+	inline Point3D  operator *  ( Real r ) const { Point3D q ; q.coords[0] = coords[0] * r , q.coords[1] = coords[1] * r , q.coords[2] = coords[2] * r ; return q; }
+	inline Point3D  operator /  ( Real r ) const { return (*this) * ( Real(1.)/r ); }
+};
 
 template<class Real>
 Point3D<Real> RandomBallPoint(void);
@@ -75,15 +89,16 @@ class Triangle{
 public:
 	double p[3][3];
 	double Area(void) const{
-		double v1[3],v2[3],v[3];
-		for(int d=0;d<3;d++){
-			v1[d]=p[1][d]-p[0][d];
-			v2[d]=p[2][d]-p[0][d];
+		double v1[3] , v2[3] , v[3];
+		for( int d=0 ; d<3 ; d++ )
+		{
+			v1[d] = p[1][d] - p[0][d];
+			v2[d] = p[2][d] - p[0][d];
 		}
-		v[0]= v1[1]*v2[2]-v1[2]*v2[1];
-		v[1]=-v1[0]*v2[2]+v1[2]*v2[0];
-		v[2]= v1[0]*v2[1]-v1[1]*v2[0];
-		return sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2])/2;
+		v[0] =  v1[1]*v2[2] - v1[2]*v2[1];
+		v[1] = -v1[0]*v2[2] + v1[2]*v2[0];
+		v[2] =  v1[0]*v2[1] - v1[1]*v2[0];
+		return sqrt( v[0]*v[0] + v[1]*v[1] + v[2]*v[2] ) / 2;
 	}
 	double AspectRatio(void) const{
 		double d=0;
@@ -141,16 +156,16 @@ public:
 	std::vector<TriangulationEdge>				edges;
 	std::vector<TriangulationTriangle>			triangles;
 
-	int factor(const int& tIndex,int& p1,int& p2,int& p3);
+	int factor( int tIndex,int& p1,int& p2,int& p3);
 	double area(void);
-	double area(const int& tIndex);
-	double area(const int& p1,const int& p2,const int& p3);
-	int flipMinimize(const int& eIndex);
-	int addTriangle(const int& p1,const int& p2,const int& p3);
+	double area( int tIndex );
+	double area( int p1 , int p2 , int p3 );
+	int flipMinimize( int eIndex);
+	int addTriangle( int p1 , int p2 , int p3 );
 
 protected:
 	hash_map<long long,int> edgeMap;
-	static long long EdgeIndex(const int& p1,const int& p2);
+	static long long EdgeIndex( int p1 , int p2 );
 	double area(const Triangle& t);
 };
 
@@ -180,6 +195,38 @@ public:
 	virtual int outOfCorePointCount(void)=0;
 	virtual int polygonCount( void ) = 0;
 };
+// Stores the iso-span of each vertex, rather than it's position
+class CoredMeshData2
+{
+public:
+	struct Vertex
+	{
+		Point3D< float > start , end;
+		float value;
+		Vertex( void ) { ; }
+		Vertex( Point3D< float > s , Point3D< float > e , float v ) { start = s , end = e , value = v; }
+		Vertex( Point3D< float > s , Point3D< float > e , Point3D< float > p )
+		{
+			start = s , end = e;
+			// < p , e-s > = < s + v*(e-s) , e-s >
+			// < p , e-s > - < s , e-s > = v || e-s || ^2
+			// v = < p-s , e-s > / || e-s ||^2
+			Point3D< float > p1 = p-s , p2 = e-s;
+			value = ( p1[0] * p2[0] + p1[1] * p2[1] + p1[2] * p2[2] ) / ( p2[0] * p2[0] + p2[1] * p2[1] + p2[2] * p2[2] );
+		}
+	};
+	std::vector< Vertex > inCorePoints;
+	virtual void resetIterator( void ) = 0;
+
+	virtual int addOutOfCorePoint( const Vertex& v ) = 0;
+	virtual int addPolygon( const std::vector< CoredVertexIndex >& vertices ) = 0;
+
+	virtual int nextOutOfCorePoint( Vertex& v ) = 0;
+	virtual int nextPolygon( std::vector< CoredVertexIndex >& vertices ) = 0;
+
+	virtual int outOfCorePointCount( void )=0;
+	virtual int polygonCount( void ) = 0;
+};
 
 class CoredVectorMeshData : public CoredMeshData
 {
@@ -192,13 +239,33 @@ public:
 
 	void resetIterator(void);
 
-	int addOutOfCorePoint(const Point3D<float>& p);
+	int addOutOfCorePoint( const Point3D<float>& p );
 	int addPolygon( const std::vector< CoredVertexIndex >& vertices );
 
 	int nextOutOfCorePoint( Point3D<float>& p );
 	int nextPolygon( std::vector< CoredVertexIndex >& vertices );
 
 	int outOfCorePointCount(void);
+	int polygonCount( void );
+};
+class CoredVectorMeshData2 : public CoredMeshData2
+{
+	std::vector< CoredMeshData2::Vertex > oocPoints;
+	std::vector< std::vector< int > > polygons;
+	int polygonIndex;
+	int oocPointIndex;
+public:
+	CoredVectorMeshData2::CoredVectorMeshData2( void );
+
+	void resetIterator(void);
+
+	int addOutOfCorePoint( const CoredMeshData2::Vertex& v );
+	int addPolygon( const std::vector< CoredVertexIndex >& vertices );
+
+	int nextOutOfCorePoint( CoredMeshData2::Vertex& v );
+	int nextPolygon( std::vector< CoredVertexIndex >& vertices );
+
+	int outOfCorePointCount( void );
 	int polygonCount( void );
 };
 class CoredFileMeshData : public CoredMeshData
@@ -218,6 +285,25 @@ public:
 	int nextPolygon( std::vector< CoredVertexIndex >& vertices );
 
 	int outOfCorePointCount(void);
+	int polygonCount( void );
+};
+class CoredFileMeshData2 : public CoredMeshData2
+{
+	FILE *oocPointFile , *polygonFile;
+	int oocPoints , polygons;
+public:
+	CoredFileMeshData2( void );
+	~CoredFileMeshData2( void );
+
+	void resetIterator( void );
+
+	int addOutOfCorePoint( const CoredMeshData2::Vertex& v );
+	int addPolygon( const std::vector< CoredVertexIndex >& vertices );
+
+	int nextOutOfCorePoint( CoredMeshData2::Vertex& v );
+	int nextPolygon( std::vector< CoredVertexIndex >& vertices );
+
+	int outOfCorePointCount( void );
 	int polygonCount( void );
 };
 #include "Geometry.inl"

@@ -30,282 +30,330 @@ DAMAGE.
 #include <stdlib.h>
 #include <math.h>
 #include <float.h>
+#ifdef _WIN32
+#include <Windows.h>
+#include <Psapi.h>
+#endif // _WIN32
 #include "Time.h"
 #include "MarchingCubes.h"
 #include "Octree.h"
 #include "SparseMatrix.h"
 #include "CmdLineParser.h"
-#include "FunctionData.h"
 #include "PPolynomial.h"
-#include "ply.h"
+#include "Ply.h"
 #include "MemoryUsage.h"
-
-#define SCALE 1.25
+#include "omp.h"
 
 #include <stdarg.h>
 char* outputFile=NULL;
 int echoStdout=0;
-void DumpOutput(const char* format,...){
-	if(outputFile){
-		FILE* fp=fopen(outputFile,"a");
+void DumpOutput( const char* format , ... )
+{
+	if( outputFile )
+	{
+		FILE* fp = fopen( outputFile , "a" );
 		va_list args;
-		va_start(args,format);
-		vfprintf(fp,format,args);
-		fclose(fp);
-		va_end(args);
+		va_start( args , format );
+		vfprintf( fp , format , args );
+		fclose( fp );
+		va_end( args );
 	}
-	if(echoStdout){
+	if( echoStdout )
+	{
 		va_list args;
-		va_start(args,format);
-		vprintf(format,args);
-		va_end(args);
+		va_start( args , format );
+		vprintf( format , args );
+		va_end( args );
 	}
 }
-void DumpOutput2(char* str,const char* format,...){
-	if(outputFile){
-		FILE* fp=fopen(outputFile,"a");
+void DumpOutput2( char* str , const char* format , ... )
+{
+	if( outputFile )
+	{
+		FILE* fp = fopen( outputFile , "a" );
 		va_list args;
-		va_start(args,format);
-		vfprintf(fp,format,args);
-		fclose(fp);
-		va_end(args);
+		va_start( args , format );
+		vfprintf( fp , format , args );
+		fclose( fp );
+		va_end( args );
 	}
-	if(echoStdout){
+	if( echoStdout )
+	{
 		va_list args;
-		va_start(args,format);
-		vprintf(format,args);
-		va_end(args);
+		va_start( args , format );
+		vprintf( format , args );
+		va_end( args );
 	}
 	va_list args;
-	va_start(args,format);
-	vsprintf(str,format,args);
-	va_end(args);
-	if(str[strlen(str)-1]=='\n'){str[strlen(str)-1]=0;}
+	va_start( args , format );
+	vsprintf( str , format , args );
+	va_end( args );
+	if( str[strlen(str)-1]=='\n' ) str[strlen(str)-1] = 0;
 }
 
 #include "MultiGridOctreeData.h"
 
+cmdLineString
+	In( "in" ) ,
+	Out( "out" ) ,
+	VoxelGrid( "voxel" );
+
+cmdLineReadable
+#ifdef _WIN32
+	Performance( "performance" ) ,
+#endif // _WIN32
+	Verbose( "verbose" ) ,
+	NoComments( "noComments" ) ,
+	PolygonMesh( "polygonMesh" ) ,
+	NonAdaptiveWeights( "nonAdaptive" ) ,
+	Confidence( "confidence" ) ,
+	NonManifold( "nonManifold" ) ,
+	ASCII( "ascii" ) ,
+	ShowResidual( "showResidual" );
+
+cmdLineInt
+	Depth( "depth" , 8 ) ,
+	SolverDivide( "solverDivide" , 8 ) ,
+	IsoDivide( "isoDivide" , 8 ) ,
+	KernelDepth( "kernelDepth" ) ,
+	MinIters( "minIters" , 8 ) ,
+	VoxelDepth( "voxelDepth" , -1 ) ,
+	MinDepth( "minDepth" , 5 ) ,
+	Threads( "threads" , omp_get_num_procs() );
+
+cmdLineFloat
+	SamplesPerNode( "samplesPerNode" , 1.f ) ,
+	Scale( "scale" , 1.1f ) ,
+	SolverAccuracy( "accuracy" , float(1e-3) ) ,
+	PointWeight( "pointWeight" , 4.f );
+
+
+cmdLineReadable* params[] =
+{
+	&In , &Depth , &Out ,
+	&SolverDivide , &IsoDivide , &Scale , &Verbose , &SolverAccuracy , &NoComments ,
+	&KernelDepth , &SamplesPerNode , &Confidence , &NonManifold , &PolygonMesh , &ASCII , &ShowResidual , &MinIters , &NonAdaptiveWeights , &VoxelDepth ,
+	&PointWeight , &VoxelGrid , &Threads , &MinDepth ,
+#ifdef _WIN32
+	&Performance ,
+#endif // _WIN32
+};
+
 
 void ShowUsage(char* ex)
 {
-	printf("Usage: %s\n",ex);
-	printf("\t--in  <input points>\n");
+	printf( "Usage: %s\n" , ex );
+	printf( "\t --%s  <input points>\n" , In.name );
 
-	printf("\t--out <ouput triangle mesh>\n");
+	printf( "\t[--%s <ouput triangle mesh>]\n" , Out.name );
+	printf( "\t[--%s <ouput voxel grid>]\n" , VoxelGrid.name );
 
-	printf("\t[--depth <maximum reconstruction depth>]\n");
-	printf("\t\t Running at depth d corresponds to solving on a 2^d x 2^d x 2^d\n");
-	printf("\t\t voxel grid.\n");
+	printf( "\t[--%s <maximum reconstruction depth>=%d]\n" , Depth.name , Depth.value );
+	printf( "\t\t Running at depth d corresponds to solving on a 2^d x 2^d x 2^d\n" );
+	printf( "\t\t voxel grid.\n" );
 
-	printf("\t[--scale <scale factor>]\n");
-	printf("\t\t Specifies the factor of the bounding cube that the input\n");
-	printf("\t\t samples should fit into.\n");
+	printf( "\t[--%s <depth at which to extract the voxel grid>=<%s>]\n" , VoxelDepth.name , Depth.name );
 
-	printf("\t[--binary]\n");
-	printf("\t\t If this flag is enabled, the point set is read in in\n");
-	printf("\t\t binary format.\n");
+	printf( "\t[--%s <scale factor>=%f]\n" , Scale.name , Scale.value );
+	printf( "\t\t Specifies the factor of the bounding cube that the input\n" );
+	printf( "\t\t samples should fit into.\n" );
 
-	printf("\t[--solverDivide <subdivision depth>]\n");
-	printf("\t\t The depth at which a block Gauss-Seidel solver is used\n");
-	printf("\t\t to solve the Laplacian.\n");
+	printf( "\t[--%s <subdivision depth>=%d]\n" , SolverDivide.name , SolverDivide.value );
+	printf( "\t\t The depth at which a block Gauss-Seidel solver is used\n");
+	printf( "\t\t to solve the Laplacian.\n");
 
-	printf("\t[--samplesPerNode <minimum number of samples per node>\n");
-	printf("\t\t This parameter specifies the minimum number of points that\n");
-	printf("\t\t should fall within an octree node.\n");
+	printf( "\t[--%s <minimum number of samples per node>=%f]\n" , SamplesPerNode.name, SamplesPerNode.value );
+	printf( "\t\t This parameter specifies the minimum number of points that\n" );
+	printf( "\t\t should fall within an octree node.\n" );
 
-	printf("\t[--confidence]\n");
-	printf("\t\t If this flag is enabled, the size of a sample's normals is\n");
-	printf("\t\t used as a confidence value, affecting the sample's\n");
-	printf("\t\t constribution to the reconstruction process.\n");
+	printf( "\t[--%s <num threads>=%d]\n" , Threads.name , Threads.value );
+	printf( "\t\t This parameter specifies the number of threads across which\n" );
+	printf( "\t\t the solver should be parallelizeds.\n" );
 
-	printf("\t[--manifold]\n");
-	printf("\t\t If this flag is enabled, the isosurface extraction is performed\n");
-	printf("\t\t by adding a polygon's barycenter in order to ensure that the output\n");
-	printf("\t\t mesh is manifold.\n");
+	printf( "\t[--%s]\n" , Confidence.name );
+	printf( "\t\t If this flag is enabled, the size of a sample's normals is\n" );
+	printf( "\t\t used as a confidence value, affecting the sample's\n" );
+	printf( "\t\t constribution to the reconstruction process.\n" );
 
-	printf("\t[--polygonMesh]\n");
-	printf("\t\t If this flag is enabled, the isosurface extraction returns polygons\n");
-	printf("\t\t rather than triangles. (This overrides the --manifold flag.)\n");
+	printf( "\t[--%s]\n" , NonManifold.name );
+	printf( "\t\t If this flag is enabled, the isosurface extraction does not add\n" );
+	printf( "\t\t a planar polygon's barycenter in order to ensure that the output\n" );
+	printf( "\t\t mesh is manifold.\n" );
 
-	printf("\t[--verbose]\n");
+	printf( "\t[--%s]\n" , PolygonMesh.name);
+	printf( "\t\t If this flag is enabled, the isosurface extraction returns polygons\n" );
+	printf( "\t\t rather than triangles.\n" );
+
+	printf( "\t[--%s <interpolation weight>=%f]\n" , PointWeight.name , PointWeight.value );
+	printf( "\t\t This value specifies the weight that point interpolation constraints are\n" );
+	printf( "\t\t given when defining the (screened) Poisson system.\n" );
+
+	printf( "\t[--%s <minimum depth>=%d]\n" , MinDepth.name , MinDepth.value );
+	printf( "\t\t This flag specifies the minimum depth at which the octree is to be adaptive.\n" );
+
+	printf( "\t[--%s <solver accuracy>=%g]\n" , SolverAccuracy.name , SolverAccuracy.value );
+	printf( "\t[--%s <minimum number of solver iterations>=%d]\n" , MinIters.name , MinIters.value );
+
+	printf( "\t[--%s]\n", NonAdaptiveWeights.name );
+	printf( "\t\t If this flag is enabled, point weights are not adapted to depth.\n" );
+
+#ifdef _WIN32
+	printf( "\t[--%s]\n" , Performance.name );
+	printf( "\t\t If this flag is enabled, the running time and peak memory usage\n" );
+	printf( "\t\t is output after the reconstruction.\n" );
+#endif // _WIN32
+	printf( "\t[--%s]\n" , ASCII.name );
+	printf( "\t\t If this flag is enabled, the output file is written out in ASCII format.\n" );
+	printf( "\t[--%s]\n" , NoComments.name );
+	printf( "\t\t If this flag is enabled, the output file will not include comments.\n" );
+	printf( "\t[--%s]\n" , Verbose.name );
+	printf( "\t\t If this flag is enabled, the progress of the reconstructor will be output to STDOUT.\n" );
 }
-template<int Degree>
-int Execute(int argc,char* argv[])
+template< int Degree >
+int Execute( int argc , char* argv[] )
 {
 	int i;
-	cmdLineString In,Out;
-	cmdLineReadable Binary,Verbose,NoResetSamples,NoClipTree,Confidence,Manifold,PolygonMesh;
-	cmdLineInt Depth(8),SolverDivide(8),IsoDivide(8),Refine(3);
-	cmdLineInt KernelDepth;
-	cmdLineFloat SamplesPerNode(1.0f),Scale(1.1f);
-	char* paramNames[]=
-	{
-		"in","depth","out","refine","noResetSamples","noClipTree",
-		"binary","solverDivide","isoDivide","scale","verbose",
-		"kernelDepth","samplesPerNode","confidence","manifold","polygonMesh"
-	};
-	cmdLineReadable* params[]=
-	{
-		&In,&Depth,&Out,&Refine,&NoResetSamples,&NoClipTree,
-		&Binary,&SolverDivide,&IsoDivide,&Scale,&Verbose,
-		&KernelDepth,&SamplesPerNode,&Confidence,&Manifold,&PolygonMesh
-	};
-	int paramNum=sizeof(paramNames)/sizeof(char*);
+	int paramNum = sizeof(params)/sizeof(cmdLineReadable*);
 	int commentNum=0;
 	char **comments;
 
-	comments=new char*[paramNum+7];
-	for(i=0;i<paramNum+7;i++){comments[i]=new char[1024];}
+	comments = new char*[paramNum+7];
+	for( i=0 ; i<paramNum+7 ; i++ ) comments[i] = new char[1024];
 
-	const char* Rev = "Rev: V2 ";
-	const char* Date = "Date: 2006-11-09 (Thur, 09 Nov 2006) ";
+	cmdLineParse( argc-1 , &argv[1] , paramNum , params , 1 );
+	if( Verbose.set ) echoStdout=1;
 
-	cmdLineParse(argc-1,&argv[1],paramNames,paramNum,params,0);
-
-	if(Verbose.set){echoStdout=1;}
-
-	DumpOutput2(comments[commentNum++],"Running Multi-Grid Octree Surface Reconstructor (degree %d). Version 3\n", Degree);
-	if(In.set)				{DumpOutput2(comments[commentNum++],"\t--in %s\n",In.value);}
-	if(Out.set)				{DumpOutput2(comments[commentNum++],"\t--out %s\n",Out.value);}
-	if(Binary.set)			{DumpOutput2(comments[commentNum++],"\t--binary\n");}
-	if(Depth.set)			{DumpOutput2(comments[commentNum++],"\t--depth %d\n",Depth.value);}
-	if(SolverDivide.set)	{DumpOutput2(comments[commentNum++],"\t--solverDivide %d\n",SolverDivide.value);}
-	if(IsoDivide.set)		{DumpOutput2(comments[commentNum++],"\t--isoDivide %d\n",IsoDivide.value);}
-	if(Refine.set)			{DumpOutput2(comments[commentNum++],"\t--refine %d\n",Refine.value);}
-	if(Scale.set)			{DumpOutput2(comments[commentNum++],"\t--scale %f\n",Scale.value);}
-	if(KernelDepth.set)		{DumpOutput2(comments[commentNum++],"\t--kernelDepth %d\n",KernelDepth.value);}
-	if(SamplesPerNode.set)	{DumpOutput2(comments[commentNum++],"\t--samplesPerNode %f\n",SamplesPerNode.value);}
-	if(NoResetSamples.set)	{DumpOutput2(comments[commentNum++],"\t--noResetSamples\n");}
-	if(NoClipTree.set)		{DumpOutput2(comments[commentNum++],"\t--noClipTree\n");}
-	if(Confidence.set)		{DumpOutput2(comments[commentNum++],"\t--confidence\n");}
-	if(Manifold.set)		{DumpOutput2(comments[commentNum++],"\t--manifold\n");}
-	if(PolygonMesh.set)		{DumpOutput2(comments[commentNum++],"\t--polygonMesh\n");}
+	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 4)\n" , Degree );
+	char str[1024];
+	for( int i=0 ; i<paramNum ; i++ )
+		if( params[i]->set )
+		{
+			params[i]->writeValue( str );
+			if( strlen( str ) ) DumpOutput2( comments[commentNum++] , "\t--%s %s\n" , params[i]->name , str );
+			else                DumpOutput2( comments[commentNum++] , "\t--%s\n" , params[i]->name );
+		}
 
 	double t;
 	double tt=Time();
-	Point3D<float> center;
-	Real scale=1.0;
-	Real isoValue=0;
+	Point3D< float > center;
+	Real scale = 1.0;
+	Real isoValue = 0;
 	//////////////////////////////////
 	// Fix courtesy of David Gallup //
 	TreeNodeData::UseIndex = 1;     //
 	//////////////////////////////////
 	Octree<Degree> tree;
-	PPolynomial<Degree> ReconstructionFunction=PPolynomial<Degree>::GaussianApproximation();
-
+	tree.threads = Threads.value;
 	center.coords[0]=center.coords[1]=center.coords[2]=0;
-	if(!In.set || !Out.set)
+	if( !In.set )
 	{
 		ShowUsage(argv[0]);
 		return 0;
 	}
+	if( SolverDivide.value<MinDepth.value )
+	{
+		fprintf( stderr , "[WARNING] %s must be at least as large as %s: %d>=%d\n" , SolverDivide.name , MinDepth.name , SolverDivide.value , MinDepth.value );
+		SolverDivide.value = MinDepth.value;
+	}
+	if( IsoDivide.value<MinDepth.value )
+	{
+		fprintf( stderr , "[WARNING] %s must be at least as large as %s: %d>=%d\n" , IsoDivide.name , MinDepth.name , IsoDivide.value , IsoDivide.value );
+		IsoDivide.value = MinDepth.value;
+	}
 	
-	TreeOctNode::SetAllocator(MEMORY_ALLOCATOR_BLOCK_SIZE);
+	TreeOctNode::SetAllocator( MEMORY_ALLOCATOR_BLOCK_SIZE );
 
 	t=Time();
-	int kernelDepth=Depth.value-2;
-	if(KernelDepth.set){kernelDepth=KernelDepth.value;}
+	int kernelDepth = KernelDepth.set ?  KernelDepth.value : Depth.value-2;
 
-	tree.setFunctionData(ReconstructionFunction,Depth.value,0,Real(1.0)/(1<<Depth.value));
-	DumpOutput("Function Data Set In: %lg\n",Time()-t);
-	DumpOutput("Memory Usage: %.3f MB\n",float(MemoryInfo::Usage())/(1<<20));
-	if(kernelDepth>Depth.value){
-		fprintf(stderr,"KernelDepth can't be greater than Depth: %d <= %d\n",kernelDepth,Depth.value);
+	tree.setBSplineData( Depth.value , Real(1.0)/(1<<Depth.value) , true );
+	if( kernelDepth>Depth.value )
+	{
+		fprintf( stderr,"[ERROR] %s can't be greater than %s: %d <= %d\n" , KernelDepth.name , Depth.name , KernelDepth.value , Depth.value );
 		return EXIT_FAILURE;
 	}
 
+	t=Time() , tree.maxMemoryUsage=0;
+	int pointCount = tree.setTree( In.value , Depth.value , MinDepth.value , kernelDepth , Real(SamplesPerNode.value) , Scale.value , center , scale , Confidence.set , PointWeight.value , !NonAdaptiveWeights.set );
+	tree.ClipTree();
+	tree.finalize();
+	tree.RefineBoundary( IsoDivide.value );
 
-	t=Time();
-#if 1
-	tree.setTree(In.value,Depth.value,Binary.set,kernelDepth,Real(SamplesPerNode.value),Scale.value,center,scale,!NoResetSamples.set,Confidence.set);
-#else
-if(Confidence.set){
-	tree.setTree(In.value,Depth.value,Binary.set,kernelDepth,Real(SamplesPerNode.value),Scale.value,center,scale,!NoResetSamples.set,0,1);
-}
-else{
-	tree.setTree(In.value,Depth.value,Binary.set,kernelDepth,Real(SamplesPerNode.value),Scale.value,center,scale,!NoResetSamples.set,0,0);
-}
-#endif
-	DumpOutput2(comments[commentNum++],"#             Tree set in: %9.1f (s), %9.1f (MB)\n",Time()-t,tree.maxMemoryUsage);
-	DumpOutput("Leaves/Nodes: %d/%d\n",tree.tree.leaves(),tree.tree.nodes());
-	DumpOutput("   Tree Size: %.3f MB\n",float(sizeof(TreeOctNode)*tree.tree.nodes())/(1<<20));
-	DumpOutput("Memory Usage: %.3f MB\n",float(MemoryInfo::Usage())/(1<<20));
+	DumpOutput2( comments[commentNum++] , "#             Tree set in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
+	DumpOutput( "Input Points: %d\n" , pointCount );
+	DumpOutput( "Leaves/Nodes: %d/%d\n" , tree.tree.leaves() , tree.tree.nodes() );
+	DumpOutput( "Memory Usage: %.3f MB\n" , float( MemoryInfo::Usage() )/(1<<20) );
 
-	if(!NoClipTree.set){
-		t=Time();
-		tree.ClipTree();
-		DumpOutput("Tree Clipped In: %lg\n",Time()-t);
-		DumpOutput("Leaves/Nodes: %d/%d\n",tree.tree.leaves(),tree.tree.nodes());
-		DumpOutput("   Tree Size: %.3f MB\n",float(sizeof(TreeOctNode)*tree.tree.nodes())/(1<<20));
-	}
+	t=Time() , tree.maxMemoryUsage=0;
+	tree.SetLaplacianConstraints();
+	DumpOutput2( comments[commentNum++] , "#      Constraints set in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
+	DumpOutput( "Memory Usage: %.3f MB\n" , float( MemoryInfo::Usage())/(1<<20) );
 
-	t=Time();
-	tree.finalize1(Refine.value);
-	DumpOutput("Finalized 1 In: %lg\n",Time()-t);
-	DumpOutput("Leaves/Nodes: %d/%d\n",tree.tree.leaves(),tree.tree.nodes());
-	DumpOutput("Memory Usage: %.3f MB\n",float(MemoryInfo::Usage())/(1<<20));
-
-	t=Time();
-	tree.maxMemoryUsage=0;
-	tree.SetLaplacianWeights();
-	DumpOutput2(comments[commentNum++],"#Laplacian Weights Set In: %9.1f (s), %9.1f (MB)\n",Time()-t,tree.maxMemoryUsage);
-	DumpOutput("Memory Usage: %.3f MB\n",float(MemoryInfo::Usage())/(1<<20));
-
-	t=Time();
-	tree.finalize2(Refine.value);
-	DumpOutput("Finalized 2 In: %lg\n",Time()-t);
-	DumpOutput("Leaves/Nodes: %d/%d\n",tree.tree.leaves(),tree.tree.nodes());
-	DumpOutput("Memory Usage: %.3f MB\n",float(MemoryInfo::Usage())/(1<<20));
-
-	tree.maxMemoryUsage=0;
-	t=Time();
-	tree.LaplacianMatrixIteration(SolverDivide.value);
-	DumpOutput2(comments[commentNum++],"# Linear System Solved In: %9.1f (s), %9.1f (MB)\n",Time()-t,tree.maxMemoryUsage);
-	DumpOutput("Memory Usage: %.3f MB\n",float(MemoryInfo::Usage())/(1<<20));
+	t=Time() , tree.maxMemoryUsage=0;
+	tree.LaplacianMatrixIteration( SolverDivide.value, ShowResidual.set , MinIters.value , SolverAccuracy.value );
+	DumpOutput2( comments[commentNum++] , "# Linear system solved in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
+	DumpOutput( "Memory Usage: %.3f MB\n" , float( MemoryInfo::Usage() )/(1<<20) );
 
 	CoredVectorMeshData mesh;
-	tree.maxMemoryUsage=0;
+	if( Verbose.set ) tree.maxMemoryUsage=0;
 	t=Time();
-	isoValue=tree.GetIsoValue();
-	DumpOutput("Got average in: %f\n",Time()-t);
-	DumpOutput("Iso-Value: %e\n",isoValue);
-	DumpOutput("Memory Usage: %.3f MB\n",float(tree.MemoryUsage()));
+	isoValue = tree.GetIsoValue();
+	DumpOutput( "Got average in: %f\n" , Time()-t );
+	DumpOutput( "Iso-Value: %e\n" , isoValue );
+	DumpOutput( "Memory Usage: %.3f MB\n" , float(tree.MemoryUsage()) );
 
-	t=Time();
-	if(IsoDivide.value) tree.GetMCIsoTriangles( isoValue , IsoDivide.value , &mesh , 0 , 1 , Manifold.set , PolygonMesh.set );
-	else                tree.GetMCIsoTriangles( isoValue ,                   &mesh , 0 , 1 , Manifold.set , PolygonMesh.set );
-	if( PolygonMesh.set ) DumpOutput2(comments[commentNum++],"#         Got Polygons in: %9.1f (s), %9.1f (MB)\n",Time()-t,tree.maxMemoryUsage);
-	else                  DumpOutput2(comments[commentNum++],"#        Got Triangles in: %9.1f (s), %9.1f (MB)\n",Time()-t,tree.maxMemoryUsage);
-	DumpOutput2(comments[commentNum++],"#              Total Time: %9.1f (s)\n",Time()-tt);
-	PlyWritePolygons(Out.value,&mesh,PLY_BINARY_NATIVE,center,scale,comments,commentNum);
+	if( VoxelGrid.set )
+	{
+		double t = Time();
+		FILE* fp = fopen( VoxelGrid.value , "wb" );
+		if( !fp ) fprintf( stderr , "Failed to open voxel file for writing: %s\n" , VoxelGrid.value );
+		else
+		{
+			int res;
+			float* values = tree.GetSolutionGrid( res , isoValue , VoxelDepth.value );
+			fwrite( &res , sizeof(int) , 1 , fp );
+			fwrite( values , sizeof(float) , res*res*res , fp );
+			fclose( fp );
+			delete[] values;
+		}
+		DumpOutput( "Got voxel grid in: %f\n" , Time()-t );
+	}
+
+	if( Out.set )
+	{
+		t=Time();
+		tree.GetMCIsoTriangles( isoValue , IsoDivide.value , &mesh , 0 , 1 , !NonManifold.set , PolygonMesh.set );
+		if( PolygonMesh.set ) DumpOutput2( comments[commentNum++] , "#         Got polygons in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
+		else                  DumpOutput2( comments[commentNum++] , "#        Got triangles in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
+		DumpOutput2( comments[commentNum++],"#              Total time: %9.1f (s)\n" , Time()-tt );
+
+		if( NoComments.set )
+		{
+			if( ASCII.set ) PlyWritePolygons( Out.value , &mesh , PLY_ASCII         , center , scale );
+			else            PlyWritePolygons( Out.value , &mesh , PLY_BINARY_NATIVE , center , scale );
+		}
+		else
+		{
+			if( ASCII.set ) PlyWritePolygons( Out.value , &mesh , PLY_ASCII         , center , scale , comments , commentNum );
+			else            PlyWritePolygons( Out.value , &mesh , PLY_BINARY_NATIVE , center , scale , comments , commentNum );
+		}
+	}
 
 	return 1;
 }
 
-int main(int argc,char* argv[])
+int main( int argc , char* argv[] )
 {
-	int degree=2;
-
-	switch(degree)
+	double t = Time();
+	Execute< 2 >( argc , argv );
+#ifdef _WIN32
+	if( Performance.set )
 	{
-		case 1:
-			Execute<1>(argc,argv);
-			break;
-		case 2:
-			Execute<2>(argc,argv);
-			break;
-		case 3:
-			Execute<3>(argc,argv);
-			break;
-		case 4:
-			Execute<4>(argc,argv);
-			break;
-		case 5:
-			Execute<5>(argc,argv);
-			break;
-		default:
-			fprintf(stderr,"Degree %d not supported\n",degree);
-			return EXIT_FAILURE;
+		printf( "Time: %.2f\n" , Time()-t );
+		HANDLE h = GetCurrentProcess();
+		PROCESS_MEMORY_COUNTERS pmc;
+		if( GetProcessMemoryInfo( h , &pmc , sizeof(pmc) ) ) printf( "Peak Memory (MB): %d\n" , pmc.PeakWorkingSetSize>>20 );
 	}
+#endif // _WIN32
 	return EXIT_SUCCESS;
 }

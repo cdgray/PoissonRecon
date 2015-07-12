@@ -30,8 +30,8 @@
 		 
 */
 
-#ifndef __PLY_H__
-#define __PLY_H__
+#ifndef PLY_FILE_INCLUDED
+#define PLY_FILE_INCLUDED
 
 
 #ifndef WIN32
@@ -80,7 +80,8 @@ extern "C" {
 #define  PLY_SCALAR  0
 #define  PLY_LIST    1
 	
-
+#define PLY_STRIP_COMMENT_HEADER 0
+	
 typedef struct PlyProperty {    /* description of a property */
 	
 	char *name;                           /* property name */
@@ -217,11 +218,4 @@ extern int equal_strings(char *, char *);
 #ifdef __cplusplus
 }
 #endif
-#include "Geometry.h"
-#include <vector>
-
-int PlyWritePolygons( char* fileName , CoredMeshData*  mesh , int file_type , const Point3D<float>& translate , float scale , char** comments=NULL , int commentNum=0 );
-int PlyWritePolygons( char* fileName , CoredMeshData2* mesh , int file_type , const Point3D<float>& translate , float scale , char** comments=NULL , int commentNum=0 );
-inline int PlyDefaultFileType(void){return PLY_ASCII;}
-
-#endif /* !__PLY_H__ */
+#endif // PLY_FILE_INCLUDED

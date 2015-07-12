@@ -46,7 +46,7 @@ int CoredVectorMeshData::addOutOfCorePoint(const Point3D<float>& p){
 int CoredVectorMeshData::addPolygon( const std::vector< CoredVertexIndex >& vertices )
 {
 	std::vector< int > polygon( vertices.size() );
-	for( int i=0 ; i<vertices.size() ; i++ ) 
+	for( int i=0 ; i<int(vertices.size()) ; i++ ) 
 		if( vertices[i].inCore ) polygon[i] =  vertices[i].idx;
 		else                     polygon[i] = -vertices[i].idx-1;
 	polygons.push_back( polygon );
@@ -65,7 +65,7 @@ int CoredVectorMeshData::nextPolygon( std::vector< CoredVertexIndex >& vertices 
 	{
 		std::vector< int >& polygon = polygons[ polygonIndex++ ];
 		vertices.resize( polygon.size() );
-		for( int i=0 ; i<polygon.size() ; i++ )
+		for( int i=0 ; i<int(polygon.size()) ; i++ )
 			if( polygon[i]<0 ) vertices[i].idx = -polygon[i]-1 , vertices[i].inCore = false;
 			else               vertices[i].idx =  polygon[i]   , vertices[i].inCore = true;
 		return 1;
@@ -74,3 +74,47 @@ int CoredVectorMeshData::nextPolygon( std::vector< CoredVertexIndex >& vertices 
 }
 int CoredVectorMeshData::outOfCorePointCount(void){return int(oocPoints.size());}
 int CoredVectorMeshData::polygonCount( void ) { return int( polygons.size() ); }
+
+/////////////////////////
+// CoredVectorMeshData //
+/////////////////////////
+CoredVectorMeshData2::CoredVectorMeshData2( void ) { oocPointIndex = polygonIndex = 0; }
+void CoredVectorMeshData2::resetIterator ( void ) { oocPointIndex = polygonIndex = 0; }
+int CoredVectorMeshData2::addOutOfCorePoint( const CoredMeshData2::Vertex& v )
+{
+	oocPoints.push_back( v );
+	return int(oocPoints.size())-1;
+}
+int CoredVectorMeshData2::addPolygon( const std::vector< CoredVertexIndex >& vertices )
+{
+	std::vector< int > polygon( vertices.size() );
+	for( int i=0 ; i<int(vertices.size()) ; i++ ) 
+		if( vertices[i].inCore ) polygon[i] =  vertices[i].idx;
+		else                     polygon[i] = -vertices[i].idx-1;
+	polygons.push_back( polygon );
+	return int( polygons.size() )-1;
+}
+int CoredVectorMeshData2::nextOutOfCorePoint( CoredMeshData2::Vertex& v )
+{
+	if(oocPointIndex<int(oocPoints.size()))
+	{
+		v = oocPoints[oocPointIndex++];
+		return 1;
+	}
+	else{return 0;}
+}
+int CoredVectorMeshData2::nextPolygon( std::vector< CoredVertexIndex >& vertices )
+{
+	if( polygonIndex<int( polygons.size() ) )
+	{
+		std::vector< int >& polygon = polygons[ polygonIndex++ ];
+		vertices.resize( polygon.size() );
+		for( int i=0 ; i<int(polygon.size()) ; i++ )
+			if( polygon[i]<0 ) vertices[i].idx = -polygon[i]-1 , vertices[i].inCore = false;
+			else               vertices[i].idx =  polygon[i]   , vertices[i].inCore = true;
+		return 1;
+	}
+	else return 0;
+}
+int CoredVectorMeshData2::outOfCorePointCount(void){return int(oocPoints.size());}
+int CoredVectorMeshData2::polygonCount( void ) { return int( polygons.size() ); }

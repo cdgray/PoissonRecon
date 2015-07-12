@@ -38,62 +38,129 @@ DAMAGE.
 int strcasecmp(char* c1,char* c2){return _stricmp(c1,c2);}
 #endif
 
-cmdLineReadable::cmdLineReadable(void){set=0;}
-cmdLineReadable::~cmdLineReadable(void){;}
+cmdLineReadable::cmdLineReadable(const char* name)
+{
+	set=false;
+	this->name=new char[strlen(name)+1];
+	strcpy(this->name,name);
+}
+cmdLineReadable::~cmdLineReadable(void)
+{
+	if(name) delete[] name;
+	name=NULL;
+}
 int cmdLineReadable::read(char**,int){
-	set=1;
+	set=true;
 	return 0;
 }
+void cmdLineReadable::writeValue(char* str)
+{
+	str[0] = 0;
+}
 
-cmdLineInt::cmdLineInt(void){value=0;}
-cmdLineInt::cmdLineInt(const int& v){value=v;}
+////////////////
+// cmdLineInt //
+////////////////
+cmdLineInt::cmdLineInt(const char* name) : cmdLineReadable(name) {value=0;}
+cmdLineInt::cmdLineInt(const char* name,const int& v) : cmdLineReadable(name) {value=v;}
 int cmdLineInt::read(char** argv,int argc){
 	if(argc>0){
 		value=atoi(argv[0]);
-		set=1;
+		set=true;
 		return 1;
 	}
 	else{return 0;}
 }
-cmdLineFloat::cmdLineFloat(void){value=0;}
-cmdLineFloat::cmdLineFloat(const float& v){value=v;}
+void cmdLineInt::writeValue(char* str)
+{
+	sprintf(str,"%d",value);
+}
+
+//////////////////
+// cmdLineFloat //
+//////////////////
+cmdLineFloat::cmdLineFloat(const char* name) : cmdLineReadable(name) {value=0;}
+cmdLineFloat::cmdLineFloat(const char* name, const float& v) : cmdLineReadable(name) {value=v;}
 int cmdLineFloat::read(char** argv,int argc){
 	if(argc>0){
 		value=(float)atof(argv[0]);
-		set=1;
+		set=true;
 		return 1;
 	}
 	else{return 0;}
 }
-cmdLineString::cmdLineString(void){value=NULL;}
-cmdLineString::~cmdLineString(void){
-	if(value){
-		delete[] value;
-		value=NULL;
-	}
+void cmdLineFloat::writeValue(char* str)
+{
+	sprintf(str,"%f",value);
+}
+
+///////////////////
+// cmdLineString //
+///////////////////
+cmdLineString::cmdLineString(const char* name) : cmdLineReadable(name) {value=NULL;}
+cmdLineString::~cmdLineString(void)
+{
+	if(value)	delete[] value;
+	value=NULL;
 }
 int cmdLineString::read(char** argv,int argc){
-	if(argc>0){
+	if(argc>0)
+	{
 		value=new char[strlen(argv[0])+1];
 		strcpy(value,argv[0]);
-		set=1;
+		set=true;
 		return 1;
 	}
 	else{return 0;}
 }
-cmdLinePoint3D::cmdLinePoint3D(void){value.coords[0]=value.coords[1]=value.coords[2]=0;}
-cmdLinePoint3D::cmdLinePoint3D(const Point3D<float>& v){value.coords[0]=v.coords[0];value.coords[1]=v.coords[1];value.coords[2]=v.coords[2];}
-cmdLinePoint3D::cmdLinePoint3D(const float& v0,const float& v1,const float& v2){value.coords[0]=v0;value.coords[1]=v1;value.coords[2]=v2;}
-int cmdLinePoint3D::read(char** argv,int argc){
-	if(argc>2){
-		value.coords[0]=(float)atof(argv[0]);
-		value.coords[1]=(float)atof(argv[1]);
-		value.coords[2]=(float)atof(argv[2]);
-		set=1;
-		return 3;
-	}
-	else{return 0;}
+void cmdLineString::writeValue(char* str)
+{
+	sprintf(str,"%s",value);
 }
+
+////////////////////
+// cmdLineStrings //
+////////////////////
+cmdLineStrings::cmdLineStrings(const char* name,int Dim) : cmdLineReadable(name)
+{
+	this->Dim=Dim;
+	values=new char*[Dim];
+	for(int i=0;i<Dim;i++)	values[i]=NULL;
+}
+cmdLineStrings::~cmdLineStrings(void)
+{
+	for(int i=0;i<Dim;i++)
+	{
+		if(values[i])	delete[] values[i];
+		values[i]=NULL;
+	}
+	delete[] values;
+	values=NULL;
+}
+int cmdLineStrings::read(char** argv,int argc)
+{
+	if(argc>=Dim)
+	{
+		for(int i=0;i<Dim;i++)
+		{
+			values[i]=new char[strlen(argv[i])+1];
+			strcpy(values[i],argv[i]);
+		}
+		set=true;
+		return Dim;
+	}
+	else	return 0;
+}
+void cmdLineStrings::writeValue(char* str)
+{
+	char* temp=str;
+	for(int i=0;i<Dim;i++)
+	{
+		sprintf(temp,"%s ",values[i]);
+		temp=str+strlen(str);
+	}
+}
+
 
 char* GetFileExtension(char* fileName){
 	char* fileNameCopy;
@@ -104,7 +171,8 @@ char* GetFileExtension(char* fileName){
 	assert(fileNameCopy);
 	strcpy(fileNameCopy,fileName);
 	temp=strtok(fileNameCopy,".");
-	while(temp!=NULL){
+	while(temp!=NULL)
+	{
 		if(ext!=NULL){delete[] ext;}
 		ext=new char[strlen(temp)+1];
 		assert(ext);
@@ -114,15 +182,37 @@ char* GetFileExtension(char* fileName){
 	delete[] fileNameCopy;
 	return ext;
 }
+char* GetLocalFileName(char* fileName){
+	char* fileNameCopy;
+	char* name=NULL;
+	char* temp;
 
-void cmdLineParse(int argc, char **argv,char** names,int num,cmdLineReadable** readable,
-				  int dumpError){
+	fileNameCopy=new char[strlen(fileName)+1];
+	assert(fileNameCopy);
+	strcpy(fileNameCopy,fileName);
+	temp=strtok(fileNameCopy,"\\");
+	while(temp!=NULL){
+		if(name!=NULL){delete[] name;}
+		name=new char[strlen(temp)+1];
+		assert(name);
+		strcpy(name,temp);
+		temp=strtok(NULL,"\\");
+	}
+	delete[] fileNameCopy;
+	return name;
+}
+
+void cmdLineParse(int argc, char **argv,int num,cmdLineReadable** readable,int dumpError)
+{
 	int i,j;
-
-	while (argc > 0) {
-		if (argv[0][0] == '-' && argv[0][1]=='-') {
-			for(i=0;i<num;i++){
-				if (!strcmp(&argv[0][2],names[i])){
+	while (argc > 0)
+	{
+		if (argv[0][0] == '-' && argv[0][1]=='-')
+		{
+			for(i=0;i<num;i++)
+			{
+				if (!strcmp(&argv[0][2],readable[i]->name))
+				{
 					argv++, argc--;
 					j=readable[i]->read(argv,argc);
 					argv+=j,argc-=j;
@@ -130,20 +220,60 @@ void cmdLineParse(int argc, char **argv,char** names,int num,cmdLineReadable** r
 				}
 			}
 			if(i==num){
-				if(dumpError){
+				if(dumpError)
+				{
 					fprintf(stderr, "invalid option: %s\n",*argv);
 					fprintf(stderr, "possible options are:\n");
-					for(i=0;i<num;i++){fprintf(stderr, "  %s\n",names[i]);}
+					for(i=0;i<num;i++)	fprintf(stderr, "  %s\n",readable[i]->name);
 				}
 				argv++, argc--;
 			}
 		}
-		else {
-			if(dumpError){
+		else
+		{
+			if(dumpError)
+			{
 				fprintf(stderr, "invalid option: %s\n", *argv);
 				fprintf(stderr, "  options must start with a \'--\'\n");
 			}
 			argv++, argc--;
 		}
 	}
+}
+char** ReadWords(const char* fileName,int& cnt)
+{
+	char** names;
+	char temp[500];
+	FILE* fp;
+
+	fp=fopen(fileName,"r");
+	if(!fp){return NULL;}
+	cnt=0;
+	while(fscanf(fp," %s ",temp)==1){cnt++;}
+	fclose(fp);
+
+	names=new char*[cnt];
+	if(!names){return NULL;}
+
+	fp=fopen(fileName,"r");
+	if(!fp){
+		delete[] names;
+		cnt=0;
+		return NULL;
+	}
+	cnt=0;
+	while(fscanf(fp," %s ",temp)==1){
+		names[cnt]=new char[strlen(temp)+1];
+		if(!names){
+			for(int j=0;j<cnt;j++){delete[] names[j];}
+			delete[] names;
+			cnt=0;
+			fclose(fp);
+			return NULL;
+		}
+		strcpy(names[cnt],temp);
+		cnt++;
+	}
+	fclose(fp);
+	return names;
 }

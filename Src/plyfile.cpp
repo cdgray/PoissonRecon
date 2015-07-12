@@ -36,7 +36,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-#include "ply.h"
+#include "PlyFile.h"
 
 char *type_names[] = {
 	"invalid",
@@ -1005,7 +1005,7 @@ Open a polygon file for reading.
    prop      - property to add to those that will be returned
   ******************************************************************************/
   
-  void ply_get_property(
+  int ply_get_property(
 	  PlyFile *plyfile,
 	  char *elem_name,
 	  PlyProperty *prop
@@ -1023,9 +1023,10 @@ Open a polygon file for reading.
 	  
 	  prop_ptr = find_property (elem, prop->name, &index);
 	  if (prop_ptr == NULL) {
-		  fprintf (stderr, "Warning:  Can't find property '%s' in element '%s'\n",
-			  prop->name, elem_name);
-		  return;
+//		  fprintf (stderr, "Warning:  Can't find property '%s' in element '%s'\n",
+//			  prop->name, elem_name);
+//		  return;
+		  return 0;
 	  }
 	  prop_ptr->internal_type  = prop->internal_type;
 	  prop_ptr->offset         = prop->offset;
@@ -1034,6 +1035,7 @@ Open a polygon file for reading.
 	  
 	  /* specify that the user wants this property */
 	  elem->store_prop[index] = STORE_PROP;
+	  return 1;
   }
   
   

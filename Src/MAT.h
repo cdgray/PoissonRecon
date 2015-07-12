@@ -1,5 +1,5 @@
 /*
-Copyright (c) 2006, Michael Kazhdan and Matthew Bolitho
+Copyright (c) 2007, Michael Kazhdan
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -25,22 +25,24 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
+#ifndef MAT_INCLUDED
+#define MAT_INCLUDED
+#include "Geometry.h"
 
-#include <string.h>
-#include <sys/timeb.h>
-#ifndef WIN32
-#include <sys/time.h>
-#endif // WIN32
-
-double Time( void )
+template <class Real>
+class MinimalAreaTriangulation
 {
-#ifdef WIN32
-	struct _timeb t;
-	_ftime( &t );
-	return double( t.time ) + double( t.millitm ) / 1000.0;
-#else // WIN32
-	struct timeval t;
-	gettimeofday( &t , NULL );
-	return t.tv_sec + double( t.tv_usec ) / 1000000;
-#endif // WIN32
-}
+	Real* bestTriangulation;
+	int* midPoint;
+	Real GetArea(const size_t& i,const size_t& j,const std::vector<Point3D<Real> >& vertices);
+	void GetTriangulation(const size_t& i,const size_t& j,const std::vector<Point3D<Real> >& vertices,std::vector<TriangleIndex>& triangles);
+public:
+	MinimalAreaTriangulation(void);
+	~MinimalAreaTriangulation(void);
+	Real GetArea(const std::vector<Point3D<Real> >& vertices);
+	void GetTriangulation(const std::vector<Point3D<Real> >& vertices,std::vector<TriangleIndex>& triangles);
+};
+
+#include "MAT.inl"
+
+#endif // MAT_INCLUDED

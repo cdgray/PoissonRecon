@@ -73,6 +73,7 @@
     <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)\Bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)\Obj\$(Platform)\$(Configuration)\</IntDir>
     <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <TargetExt Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.exe</TargetExt>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -127,6 +128,8 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <OpenMPSupport>true</OpenMPSupport>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -138,6 +141,7 @@
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX86</TargetMachine>
+      <AdditionalDependencies>psapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -145,12 +149,15 @@
       <TargetEnvironment>X64</TargetEnvironment>
     </Midl>
     <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <PrecompiledHeader>
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <FloatingPointModel>Precise</FloatingPointModel>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -161,6 +168,7 @@
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <TargetMachine>MachineX64</TargetMachine>
+      <AdditionalDependencies>psapi.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -176,17 +184,19 @@
   <ItemGroup>
     <ClInclude Include="Src\Allocator.h" />
     <ClInclude Include="Src\BinaryNode.h" />
+    <ClInclude Include="Src\BSplineData.h" />
     <ClInclude Include="Src\CmdLineParser.h" />
     <ClInclude Include="Src\Factor.h" />
-    <ClInclude Include="Src\Flags.h" />
-    <ClInclude Include="Src\FunctionData.h" />
     <ClInclude Include="Src\Geometry.h" />
     <ClInclude Include="Src\Hash.h" />
     <ClInclude Include="Src\MarchingCubes.h" />
+    <ClInclude Include="Src\MAT.h" />
     <ClInclude Include="Src\MemoryUsage.h" />
     <ClInclude Include="Src\MultiGridOctreeData.h" />
     <ClInclude Include="Src\Octree.h" />
     <ClInclude Include="Src\ply.h" />
+    <ClInclude Include="Src\PlyFile.h" />
+    <ClInclude Include="Src\PointStream.h" />
     <ClInclude Include="Src\Polynomial.h" />
     <ClInclude Include="Src\PPolynomial.h" />
     <ClInclude Include="Src\SparseMatrix.h" />
@@ -194,7 +204,10 @@
     <ClInclude Include="Src\Vector.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Src\FunctionData.inl" />
+    <None Include="Src\CmdLineParser.inl" />
+    <None Include="Src\MAT.inl" />
+    <None Include="Src\PointStream.inl" />
+    <None Include="Src\BSplineData.inl" />
     <None Include="Src\Geometry.inl" />
     <None Include="Src\MultiGridOctreeData.inl" />
     <None Include="Src\Octree.inl" />

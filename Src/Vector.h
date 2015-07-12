@@ -78,6 +78,11 @@ public:
 	T Norm( size_t Ln ) const;
 	void Normalize();
 
+	bool write( FILE* fp ) const;
+	bool write( const char* fileName ) const;
+	bool read( FILE* fp );
+	bool read( const char* fileName );
+
 	T* m_pV;
 protected:
 	size_t m_N;

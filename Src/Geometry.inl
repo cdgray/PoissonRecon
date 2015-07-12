@@ -281,13 +281,14 @@ void TriangleCollapse(const Real& edgeRatio,std::vector<TriangleIndex>& triangle
 // Triangulation //
 ///////////////////
 template<class Real>
-long long Triangulation<Real>::EdgeIndex(const int& p1,const int& p2){
+long long Triangulation<Real>::EdgeIndex( int p1 , int p2 )
+{
 	if(p1>p2)	{return ((long long)(p1)<<32) | ((long long)(p2));}
 	else		{return ((long long)(p2)<<32) | ((long long)(p1));}
 }
 
 template<class Real>
-int Triangulation<Real>::factor(const int& tIndex,int& p1,int& p2,int & p3){
+int Triangulation<Real>::factor(int tIndex,int& p1,int& p2,int & p3){
 	if(triangles[tIndex].eIndex[0]<0 || triangles[tIndex].eIndex[1]<0 || triangles[tIndex].eIndex[2]<0){return 0;}
 	if(edges[triangles[tIndex].eIndex[0]].tIndex[0]==tIndex){p1=edges[triangles[tIndex].eIndex[0]].pIndex[0];}
 	else													{p1=edges[triangles[tIndex].eIndex[0]].pIndex[1];}
@@ -298,7 +299,7 @@ int Triangulation<Real>::factor(const int& tIndex,int& p1,int& p2,int & p3){
 	return 1;
 }
 template<class Real>
-double Triangulation<Real>::area(const int& p1,const int& p2,const int& p3){
+double Triangulation<Real>::area(int p1,int p2,int p3){
 	Point3D<Real> q1,q2,q;
 	for(int i=0;i<3;i++){
 		q1.coords[i]=points[p2].coords[i]-points[p1].coords[i];
@@ -308,7 +309,7 @@ double Triangulation<Real>::area(const int& p1,const int& p2,const int& p3){
 	return Length(q);
 }
 template<class Real>
-double Triangulation<Real>::area(const int& tIndex){
+double Triangulation<Real>::area(int tIndex){
 	int p1,p2,p3;
 	factor(tIndex,p1,p2,p3);
 	return area(p1,p2,p3);
@@ -320,7 +321,7 @@ double Triangulation<Real>::area(void){
 	return a;
 }
 template<class Real>
-int Triangulation<Real>::addTriangle(const int& p1,const int& p2,const int& p3){
+int Triangulation<Real>::addTriangle(int p1,int p2,int p3){
 	hash_map<long long,int>::iterator iter;
 	int tIdx,eIdx,p[3];
 	p[0]=p1;
@@ -360,7 +361,7 @@ int Triangulation<Real>::addTriangle(const int& p1,const int& p2,const int& p3){
 	return tIdx;
 }
 template<class Real>
-int Triangulation<Real>::flipMinimize(const int& eIndex){
+int Triangulation<Real>::flipMinimize(int eIndex){
 	double oldArea,newArea;
 	int oldP[3],oldQ[3],newP[3],newQ[3];
 	TriangulationEdge newEdge;
