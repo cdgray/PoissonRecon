@@ -3839,6 +3839,38 @@ int Octree< Degree , OutputDensity >::AddTriangles( CoredMeshData< Vertex >* mes
 	return int(edges.size())-2;
 }
 template< int Degree , bool OutputDensity >
+Real Octree< Degree , OutputDensity >::GetSolutionValue( Point3D< Real > p , const BSplineData< Degree , Real >* fData ) const
+{
+	Real value = Real(0);
+	BSplineData< Degree , Real > _fData;
+	if( !fData ) _fData.set( tree.maxDepth() , true , _boundaryType ) , fData = &_fData;
+	const TreeOctNode* n = tree.nextNode();
+	while( n )
+	{
+		Point3D< Real > c;
+		Real w;
+		n->centerAndWidth( c , w );
+		c -= p , w *= Real(1.5);
+		if( fabs(c[0])>w || fabs(c[1])>w || fabs(c[2])>w )
+		{
+			n = tree.nextBranch( n );
+			continue;
+		}
+		int d , off[3];
+		n->depthAndOffset( d , off );
+		value += (Real)
+			(
+			n->nodeData.solution *
+			fData->baseFunctions[ BinaryNode< Real >::CenterIndex( d , off[0] ) ]( p[0] ) *
+			fData->baseFunctions[ BinaryNode< Real >::CenterIndex( d , off[1] ) ]( p[1] ) *
+			fData->baseFunctions[ BinaryNode< Real >::CenterIndex( d , off[2] ) ]( p[2] )
+			);
+		n = tree.nextNode( n );
+	}
+	if( _boundaryType==-1 ) value -= Real(0.5);
+	return value;
+}
+template< int Degree , bool OutputDensity >
 Pointer( Real ) Octree< Degree , OutputDensity >::GetSolutionGrid( int& res , Real isoValue , int depth )
 {
 	int maxDepth = _boundaryType==0 ? tree.maxDepth()-1 : tree.maxDepth();

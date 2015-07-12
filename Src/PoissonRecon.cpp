@@ -264,7 +264,7 @@ int Execute( int argc , char* argv[] )
 	else xForm = XForm4x4< Real >::Identity();
 	iXForm = xForm.inverse();
 
-	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 5.7)\n" );
+	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 5.71)\n" );
 	char str[1024];
 	for( int i=0 ; i<paramNum ; i++ )
 		if( params[i]->set )
