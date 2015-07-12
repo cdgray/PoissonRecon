@@ -34,7 +34,7 @@ DAMAGE.
 #include <Windows.h>
 #include <Psapi.h>
 #endif // _WIN32
-#include "Time.h"
+#include "MyTime.h"
 #include "MarchingCubes.h"
 #include "Octree.h"
 #include "SparseMatrix.h"
@@ -297,7 +297,7 @@ int Execute( int argc , char* argv[] )
 	else xForm = XForm4x4< Real >::Identity();
 	iXForm = xForm.inverse();
 
-	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 6.12)\n" );
+	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 6.13)\n" );
 	char str[1024];
 	for( int i=0 ; i<paramNum ; i++ )
 		if( params[i]->set )
@@ -336,7 +336,13 @@ int Execute( int argc , char* argv[] )
 	typename Octree< Real >::NormalInfo* normalInfo = new typename Octree< Real >::NormalInfo();
 	std::vector< Real >* kernelDensityWeights = new std::vector< Real >();
 	std::vector< Real >* centerWeights = new std::vector< Real >();
-	int pointCount = tree.template SetTree< float >( In.value , MinDepth.value , Depth.value , FullDepth.value , kernelDepth , Real(SamplesPerNode.value) , Scale.value , Confidence.set , NormalWeights.set , PointWeight.value , AdaptiveExponent.value , *pointInfo , *normalInfo , *kernelDensityWeights , *centerWeights , BoundaryType.value , xForm , Complete.set );
+	PointStream< float >* pointStream;
+	char* ext = GetFileExtension( In.value );
+	if     ( !strcasecmp( ext , "bnpts" ) ) pointStream = new BinaryPointStream< float >( In.value );
+	else if( !strcasecmp( ext , "ply"   ) ) pointStream = new    PLYPointStream< float >( In.value );
+	else                                    pointStream = new  ASCIIPointStream< float >( In.value );
+	delete[] ext;
+	int pointCount = tree.template SetTree< float >( pointStream , MinDepth.value , Depth.value , FullDepth.value , kernelDepth , Real(SamplesPerNode.value) , Scale.value , Confidence.set , NormalWeights.set , PointWeight.value , AdaptiveExponent.value , *pointInfo , *normalInfo , *kernelDensityWeights , *centerWeights , BoundaryType.value , xForm , Complete.set );
 	if( !Density.set ) delete kernelDensityWeights , kernelDensityWeights = NULL;
 
 	DumpOutput2( comments[commentNum++] , "#             Tree set in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );

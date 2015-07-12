@@ -25,7 +25,21 @@ CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING 
 ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
 DAMAGE.
 */
-#include "Ply.h"
+
+template< class Real >
+MemoryPointStream< Real >::MemoryPointStream( size_t pointCount , std::pair< Point3D< Real > , Point3D< Real > >* points ){ _points = points , _pointCount = pointCount , _current = 0; }
+template< class Real >
+MemoryPointStream< Real >::~MemoryPointStream( void ){ ; }
+template< class Real >
+void MemoryPointStream< Real >::reset( void ) { _current=0; }
+template< class Real >
+bool MemoryPointStream< Real >::nextPoint( Point3D< Real >& p , Point3D< Real >& n )
+{
+	if( _current>=_pointCount ) return false;
+	p = _points[_current].first , n = _points[_current].second;
+	_current++;
+	return true;
+}
 
 template< class Real >
 ASCIIPointStream< Real >::ASCIIPointStream( const char* fileName )

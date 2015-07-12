@@ -27,7 +27,7 @@ DAMAGE.
 */
 
 #include "Octree.h"
-#include "time.h"
+#include "MyTime.h"
 #include "MemoryUsage.h"
 #include "PointStream.h"
 #include "MAT.h"
@@ -397,7 +397,7 @@ bool Octree< Real >::_InBounds( Point3D< Real > p ) const
 }
 template< class Real >
 template< class PointReal >
-int Octree< Real >::SetTree( char* fileName , int minDepth , int maxDepth , int fullDepth , 
+int Octree< Real >::SetTree( PointStream< PointReal >* pointStream , int minDepth , int maxDepth , int fullDepth , 
 							int splatDepth , Real samplesPerNode , Real scaleFactor ,
 							bool useConfidence , bool useNormalWeights , Real constraintWeight , int adaptiveExponent ,
 							PointInfo& pointInfo , NormalInfo& normalInfo , std::vector< Real >& kernelDensityWeights , std::vector< Real >& centerWeights ,
@@ -444,12 +444,6 @@ int Octree< Real >::SetTree( char* fileName , int minDepth , int maxDepth , int 
 
 	typename TreeOctNode::NeighborKey3 neighborKey;
 	neighborKey.set( maxDepth );
-	PointStream< PointReal >* pointStream;
-	char* ext = GetFileExtension( fileName );
-	if     ( !strcasecmp( ext , "bnpts" ) ) pointStream = new BinaryPointStream< PointReal >( fileName );
-	else if( !strcasecmp( ext , "ply"   ) ) pointStream = new    PLYPointStream< PointReal >( fileName );
-	else                                    pointStream = new  ASCIIPointStream< PointReal >( fileName );
-	delete[] ext;
 
 	tree.setFullDepth( _fullDepth );
 
@@ -619,7 +613,6 @@ int Octree< Real >::SetTree( char* fileName , int minDepth , int maxDepth , int 
 	constraintWeight /= cnt;
 
 	MemoryUsage( );
-	delete pointStream;
 	if( _constrainValues )
 		// Set the average position and scale the weights
 		for( TreeOctNode* node=tree.nextNode() ; node ; node=tree.nextNode(node) )

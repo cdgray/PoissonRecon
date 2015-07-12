@@ -189,6 +189,47 @@ public:
 	int read(const char* fileName);
 	int read(FILE* fp);
 
+	class Neighbors5
+	{
+	public:
+		OctNode* neighbors[5][5][5];
+		Neighbors5( void );
+		void clear( void );
+	};
+	class ConstNeighbors5
+	{
+	public:
+		const OctNode* neighbors[5][5][5];
+		ConstNeighbors5( void );
+		void clear( void );
+	};
+
+	class NeighborKey5
+	{
+		int _depth;
+	public:
+		Neighbors5* neighbors;
+
+		NeighborKey5( void );
+		~NeighborKey5( void );
+
+		void set( int depth );
+		Neighbors5& getNeighbors( OctNode* node );
+		Neighbors5& setNeighbors( OctNode* node ,  int xStart=0 , int xEnd=5 , int yStart=0 , int yEnd=5 , int zStart=0 , int zEnd=5 );
+	};
+	class ConstNeighborKey5
+	{
+		int _depth;
+	public:
+		ConstNeighbors5* neighbors;
+
+		ConstNeighborKey5( void );
+		~ConstNeighborKey5( void );
+
+		void set( int depth );
+		ConstNeighbors5& getNeighbors( const OctNode* node );
+	};
+
 	class Neighbors3
 	{
 	public:
@@ -239,46 +280,6 @@ public:
 		ConstNeighbors3& getNeighbors( const OctNode* node );
 		ConstNeighbors3& getNeighbors( const OctNode* node , int minDepth );
 		void getNeighbors( const OctNode* node , typename OctNode< NodeData >::ConstNeighbors5& neighbors );
-	};
-	class Neighbors5
-	{
-	public:
-		OctNode* neighbors[5][5][5];
-		Neighbors5( void );
-		void clear( void );
-	};
-	class ConstNeighbors5
-	{
-	public:
-		const OctNode* neighbors[5][5][5];
-		ConstNeighbors5( void );
-		void clear( void );
-	};
-
-	class NeighborKey5
-	{
-		int _depth;
-	public:
-		Neighbors5* neighbors;
-
-		NeighborKey5( void );
-		~NeighborKey5( void );
-
-		void set( int depth );
-		Neighbors5& getNeighbors( OctNode* node );
-		Neighbors5& setNeighbors( OctNode* node ,  int xStart=0 , int xEnd=5 , int yStart=0 , int yEnd=5 , int zStart=0 , int zEnd=5 );
-	};
-	class ConstNeighborKey5
-	{
-		int _depth;
-	public:
-		ConstNeighbors5* neighbors;
-
-		ConstNeighborKey5( void );
-		~ConstNeighborKey5( void );
-
-		void set( int depth );
-		ConstNeighbors5& getNeighbors( const OctNode* node );
 	};
 
 	void centerIndex(int maxDepth,int index[DIMENSION]) const;

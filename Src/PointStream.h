@@ -28,6 +28,7 @@ DAMAGE.
 
 #ifndef POINT_STREAM_INCLUDED
 #define POINT_STREAM_INCLUDED
+#include "Ply.h"
 
 template< class Real >
 class PointStream
@@ -36,6 +37,19 @@ public:
 	virtual ~PointStream( void ){}
 	virtual void reset( void ) = 0;
 	virtual bool nextPoint( Point3D< Real >& p , Point3D< Real >& n ) = 0;
+};
+
+template< class Real >
+class MemoryPointStream : public PointStream< Real >
+{
+	const std::pair< Point3D< Real > , Point3D< Real > >* _points;
+	size_t _pointCount;
+	size_t _current;
+public:
+	MemoryPointStream( size_t pointCount , std::pair< Point3D< Real > , Point3D< Real > >* points );
+	~MemoryPointStream( void );
+	void reset( void );
+	bool nextPoint( Point3D< Real >& p , Point3D< Real >& n );
 };
 
 template< class Real >

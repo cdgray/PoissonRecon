@@ -31,7 +31,8 @@ DAMAGE.
 
 #define NEW_CODE 1
 
-#define MAX_MEMORY_GB 15
+//#define MAX_MEMORY_GB 15
+#define MAX_MEMORY_GB 0
 
 #define GRADIENT_DOMAIN_SOLUTION 1	// Given the constraint vector-field V(p), there are two ways to solve for the coefficients, x, of the indicator function
 									// with respect to the B-spline basis {B_i(p)}
@@ -77,6 +78,7 @@ DAMAGE.
 
 #include "Hash.h"
 #include "BSplineData.h"
+#include "PointStream.h"
 
 #ifndef _OPENMP
 int omp_get_num_procs( void ){ return 1; }
@@ -425,7 +427,7 @@ public:
 	Real Evaluate( ConstPointer( Real ) coefficients , Point3D< Real > p , const BSplineData< 2 >* fData=NULL ) const;
 	Pointer( Real ) Evaluate( ConstPointer( Real ) coefficients , int& res , Real isoValue=0.f , int depth=-1 );
 	template< class PointReal >
-	int SetTree( char* fileName , int minDepth , int maxDepth , int fullDepth , int splatDepth , Real samplesPerNode ,
+	int SetTree( PointStream< PointReal >* pointStream , int minDepth , int maxDepth , int fullDepth , int splatDepth , Real samplesPerNode ,
 		Real scaleFactor , bool useConfidence , bool useNormalWeight , Real constraintWeight , int adaptiveExponent ,
 		PointInfo& pointInfo , NormalInfo& normalInfo , std::vector< Real >& kernelDensityWeights , std::vector< Real >& centerWeights ,
 		int boundaryType=BSplineElements< 2 >::NONE , XForm4x4< Real > xForm=XForm4x4< Real >::Identity , bool makeComplete=false );
