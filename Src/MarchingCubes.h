@@ -33,7 +33,7 @@ DAMAGE.
 
 class Square{
 public:
-	const static int CORNERS=4,EDGES=4,NEIGHBORS=4;
+	const static unsigned int CORNERS=4,EDGES=4,NEIGHBORS=4;
 	static int  CornerIndex			(const int& x,const int& y);
 	static void FactorCornerIndex	(const int& idx,int& x,int& y);
 	static int  EdgeIndex			(const int& orientation,const int& i);
@@ -47,7 +47,7 @@ public:
 
 class Cube{
 public:
-	const static int CORNERS=8,EDGES=12,NEIGHBORS=6;
+	const static unsigned int CORNERS=8,EDGES=12,NEIGHBORS=6;
 
 	static int  CornerIndex			(const int& x,const int& y,const int& z);
 	static void FactorCornerIndex	(const int& idx,int& x,int& y,int& z);
@@ -76,7 +76,7 @@ class MarchingSquares{
 	static double Interpolate(const double& v1,const double& v2);
 	static void SetVertex(const int& e,const double values[Square::CORNERS],const double& iso);
 public:
-	const static int MAX_EDGES=2;
+	const static unsigned int MAX_EDGES=2;
 	static const int edgeMask[1<<Square::CORNERS];
 	static const int edges[1<<Square::CORNERS][2*MAX_EDGES+1];
 	static double vertexList[Square::EDGES][2];
@@ -98,7 +98,7 @@ class MarchingCubes{
 
 	static int GetFaceIndex(const int& mcIndex,const int& faceIndex);
 public:
-	const static int MAX_TRIANGLES=5;
+	const static unsigned int MAX_TRIANGLES=5;
 	static const int edgeMask[1<<Cube::CORNERS];
 	static const int triangles[1<<Cube::CORNERS][3*MAX_TRIANGLES+1];
 	static const int cornerMap[Cube::CORNERS];

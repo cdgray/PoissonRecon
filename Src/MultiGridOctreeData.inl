@@ -233,16 +233,28 @@ template<int Degree>
 void Octree<Degree>::NonLinearGetSampleDepthAndWeight(TreeOctNode* node,const Point3D<Real>& position,const Real& samplesPerNode,Real& depth,Real& weight){
 	TreeOctNode* temp=node;
 	weight=Real(1.0)/NonLinearGetSampleWeight(temp,position);
+#if NEW_SAMPLES_PER_NODE
+	if( weight>=samplesPerNode ) depth=Real( temp->depth()+log( weight/samplesPerNode )/log(double(1<<(DIMENSION-1))));
+#else // !NEW_SAMPLES_PER_NODE
 	if(weight>=samplesPerNode+1){depth=Real(temp->depth()+log(weight/(samplesPerNode+1))/log(double(1<<(DIMENSION-1))));}
+#endif // NEW_SAMPLES_PER_NODE
 	else{
 		Real oldAlpha,newAlpha;
 		oldAlpha=newAlpha=weight;
+#if NEW_SAMPLES_PER_NODE
+		while(newAlpha<samplesPerNode && temp->parent){
+#else // !NEW_SAMPLES_PER_NODE
 		while(newAlpha<(samplesPerNode+1) && temp->parent){
+#endif // NEW_SAMPLES_PER_NODE
 			temp=temp->parent;
 			oldAlpha=newAlpha;
 			newAlpha=Real(1.0)/NonLinearGetSampleWeight(temp,position);
 		}
+#if NEW_SAMPLES_PER_NODE
+		depth=Real(temp->depth()+log(newAlpha/samplesPerNode)/log(newAlpha/oldAlpha));
+#else // !NEW_SAMPLES_PER_NODE
 		depth=Real(temp->depth()+log(newAlpha/(samplesPerNode+1))/log(newAlpha/oldAlpha));
+#endif // NEW_SAMPLES_PER_NODE
 	}
 	weight=Real(pow(double(1<<(DIMENSION-1)),-double(depth)));
 }
@@ -290,6 +302,9 @@ int Octree<Degree>::NonLinearUpdateWeightContribution(TreeOctNode* node,const Po
 	Real w;
 	node->centerAndWidth(center,w);
 	width=w;
+#if NEW_SAMPLES_PER_NODE
+	const double SAMPLE_SCALE = 1. / ( 0.125 * 0.125 + 0.75 * 0.75 + 0.125 * 0.125 );
+#endif // NEW_SAMPLES_PER_NODE
 
 	for(i=0;i<DIMENSION;i++){
 		x=(center.coords[i]-position.coords[i]-width)/width;
@@ -297,6 +312,11 @@ int Octree<Degree>::NonLinearUpdateWeightContribution(TreeOctNode* node,const Po
 		x=(center.coords[i]-position.coords[i])/width;
 		dx[i][1]=0.750        -      x*x;
 		dx[i][2]=1.0-dx[i][1]-dx[i][0];
+#if NEW_SAMPLES_PER_NODE
+		// Note that we are splatting along a co-dimension one manifold, so uniform point samples
+		// do not generate a unit sample weight.
+		dx[i][0] *= SAMPLE_SCALE;
+#endif // NEW_SAMPLES_PER_NODE
 	}
 
 	for(i=0;i<3;i++){

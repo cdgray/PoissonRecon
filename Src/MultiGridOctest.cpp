@@ -137,7 +137,7 @@ int Execute(int argc,char* argv[])
 	cmdLineReadable Binary,Verbose,NoResetSamples,NoClipTree,Confidence,Manifold,PolygonMesh;
 	cmdLineInt Depth(8),SolverDivide(8),IsoDivide(8),Refine(3);
 	cmdLineInt KernelDepth;
-	cmdLineFloat SamplesPerNode(1.0f),Scale(1.25f);
+	cmdLineFloat SamplesPerNode(1.0f),Scale(1.1f);
 	char* paramNames[]=
 	{
 		"in","depth","out","refine","noResetSamples","noClipTree",
@@ -164,7 +164,7 @@ int Execute(int argc,char* argv[])
 
 	if(Verbose.set){echoStdout=1;}
 
-	DumpOutput2(comments[commentNum++],"Running Multi-Grid Octree Surface Reconstructor (degree %d). Version 2\n", Degree);
+	DumpOutput2(comments[commentNum++],"Running Multi-Grid Octree Surface Reconstructor (degree %d). Version 3\n", Degree);
 	if(In.set)				{DumpOutput2(comments[commentNum++],"\t--in %s\n",In.value);}
 	if(Out.set)				{DumpOutput2(comments[commentNum++],"\t--out %s\n",Out.value);}
 	if(Binary.set)			{DumpOutput2(comments[commentNum++],"\t--binary\n");}

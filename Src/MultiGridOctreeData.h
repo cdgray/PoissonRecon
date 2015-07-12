@@ -29,6 +29,8 @@ DAMAGE.
 #ifndef MULTI_GRID_OCTREE_DATA_INCLUDED
 #define MULTI_GRID_OCTREE_DATA_INCLUDED
 
+#define NEW_SAMPLES_PER_NODE 1
+
 #include "Hash.h"
 
 typedef float Real;
