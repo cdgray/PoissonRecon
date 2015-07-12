@@ -804,7 +804,7 @@ bool Octree< Degree , OutputDensity >::_inBounds( Point3D< Real > p ) const
 template< int Degree , bool OutputDensity >
 int Octree< Degree , OutputDensity >::setTree( char* fileName , int maxDepth , int minDepth , 
 							int splatDepth , Real samplesPerNode , Real scaleFactor ,
-							int useConfidence , Real constraintWeight , int adaptiveExponent , XForm4x4< Real > xForm )
+							bool useConfidence , bool useNormalWeights , Real constraintWeight , int adaptiveExponent , XForm4x4< Real > xForm )
 {
 	if( splatDepth<0 ) splatDepth = 0;
 	this->samplesPerNode = samplesPerNode;
@@ -869,8 +869,7 @@ int Octree< Degree , OutputDensity >::setTree( char* fileName , int maxDepth , i
 			if( !_inBounds(p) ) continue;
 			myCenter = Point3D< Real >( Real(0.5) , Real(0.5) , Real(0.5) );
 			myWidth = Real(1.0);
-			Real weight=Real( 1. );
-			if( useConfidence ) weight = Real( Length(n) );
+			Real weight = useConfidence ? Real( Length(n) ) : Real( 1. );
 			temp = &tree;
 			int d=0;
 			while( d<splatDepth )
@@ -905,11 +904,10 @@ int Octree< Degree , OutputDensity >::setTree( char* fileName , int maxDepth , i
 		if( !_inBounds(p) ) continue;
 		myCenter = Point3D< Real >( Real(0.5) , Real(0.5) , Real(0.5) );
 		myWidth = Real(1.0);
-		Real l = Real( Length( n ) );
-		if( l!=l || l<=EPSILON ) continue;
-		if( !useConfidence ) n /= l;
+		Real normalLength = Real( Length( n ) );
+		if( normalLength!=normalLength || normalLength<=EPSILON ) continue;
+		if( !useConfidence ) n /= normalLength;
 
-		l = Real(1.);
 		Real pointWeight = Real(1.f);
 		if( samplesPerNode>0 && splatDepth )
 		{
@@ -956,6 +954,7 @@ int Octree< Degree , OutputDensity >::setTree( char* fileName , int maxDepth , i
 		pointWeightSum += pointWeight;
 		if( _constrainValues )
 		{
+			Real pointScreeningWeight = useNormalWeights ? Real( normalLength ) : Real(1.f);
 			int d = 0;
 			TreeOctNode* temp = &tree;
 			myCenter = Point3D< Real >( Real(0.5) , Real(0.5) , Real(0.5) );
@@ -966,13 +965,13 @@ int Octree< Degree , OutputDensity >::setTree( char* fileName , int maxDepth , i
 				if( idx==-1 )
 				{
 					idx = int( _points.size() );
-					_points.push_back( PointData( p , Real(1.) ) );
+					_points.push_back( PointData( p*pointScreeningWeight , pointScreeningWeight ) );
 					temp->nodeData.pointIndex = idx;
 				}
 				else
 				{
-					_points[idx].weight += Real(1.);
-					_points[idx].position += p;
+					_points[idx].weight += pointScreeningWeight;
+					_points[idx].position += p*pointScreeningWeight;
 				}
 
 				int cIndex = TreeOctNode::CornerIndex( myCenter , p );
