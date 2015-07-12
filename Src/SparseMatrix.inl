@@ -27,6 +27,7 @@ DAMAGE.
 */
 
 #include <float.h>
+#include <string.h>
 
 
 ///////////////////
@@ -198,14 +199,6 @@ void SparseMatrix<T>::SetZero()
 }
 
 template<class T>
-void SparseMatrix<T>::SetIdentity()
-{
-	SetZero();
-	for(int ij=0; ij < Min( this->Rows(), this->Columns() ); ij++)
-		(*this)(ij,ij) = T(1);
-}
-
-template<class T>
 SparseMatrix<T> SparseMatrix<T>::operator * (const T& V) const
 {
 	SparseMatrix<T> M(*this);
@@ -216,27 +209,8 @@ SparseMatrix<T> SparseMatrix<T>::operator * (const T& V) const
 template<class T>
 SparseMatrix<T>& SparseMatrix<T>::operator *= (const T& V)
 {
-	for (int i=0; i<this->Rows(); i++)
-	{
-		for(int ii=0;ii<m_ppElements[i].size();i++){m_ppElements[i][ii].Value*=V;}
-	}
+	for( int i=0 ; i<rows ; i++ ) for( int ii=0 ; ii<rowSizes[i] ; i++ ) m_ppElements[i][ii].Value *= V;
 	return *this;
-}
-
-template<class T>
-SparseMatrix<T> SparseMatrix<T>::Multiply( const SparseMatrix<T>& M ) const
-{
-	SparseMatrix<T> R( this->Rows(), M.Columns() );
-	for(int i=0; i<R.Rows(); i++){
-		for(int ii=0;ii<m_ppElements[i].size();ii++){
-			int N=m_ppElements[i][ii].N;
-			T Value=m_ppElements[i][ii].Value;
-			for(int jj=0;jj<M.m_ppElements[N].size();jj++){
-				R(i,M.m_ppElements[N][jj].N) += Value * M.m_ppElements[N][jj].Value;
-			}
-		}
-	}
-	return R;		
 }
 
 template<class T>
@@ -271,29 +245,10 @@ void SparseMatrix<T>::Multiply( const Vector<T2>& In , Vector<T2>& Out , int thr
 }
 
 template<class T>
-SparseMatrix<T> SparseMatrix<T>::operator * (const SparseMatrix<T>& M) const
-{
-	return Multiply(M);
-}
-template<class T>
 template<class T2>
 Vector<T2> SparseMatrix<T>::operator * (const Vector<T2>& V) const
 {
 	return Multiply(V);
-}
-
-template<class T>
-SparseMatrix<T> SparseMatrix<T>::Transpose() const
-{
-	SparseMatrix<T> M( Columns(), Rows() );
-
-	for (int i=0; i<Rows(); i++)
-	{
-		for(int ii=0;ii<m_ppElements[i].size();ii++){
-			M(m_ppElements[i][ii].N,i) = m_ppElements[i][ii].Value;
-		}
-	}
-	return M;
 }
 
 template<class T>

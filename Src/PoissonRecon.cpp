@@ -42,7 +42,12 @@ DAMAGE.
 #include "PPolynomial.h"
 #include "Ply.h"
 #include "MemoryUsage.h"
+#ifdef _OPENMP
 #include "omp.h"
+#endif // _OPENMP
+void DumpOutput( const char* format , ... );
+void DumpOutput2( char* str , const char* format , ... );
+#include "MultiGridOctreeData.h"
 
 #define DEFAULT_FULL_DEPTH 5
 
@@ -99,7 +104,6 @@ void DumpOutput2( char* str , const char* format , ... )
 	if( str[strlen(str)-1]=='\n' ) str[strlen(str)-1] = 0;
 }
 
-#include "MultiGridOctreeData.h"
 
 cmdLineString
 	In( "in" ) ,
@@ -196,9 +200,11 @@ void ShowUsage(char* ex)
 	printf( "\t[--%s <iterations>=%d]\n" , Iters.name , Iters.value );
 	printf( "\t\t This flag specifies the (maximum if CG) number of solver iterations.\n" );
 
+#ifdef _OPENMP
 	printf( "\t[--%s <num threads>=%d]\n" , Threads.name , Threads.value );
 	printf( "\t\t This parameter specifies the number of threads across which\n" );
 	printf( "\t\t the solver should be parallelized.\n" );
+#endif // _OPENMP
 
 	printf( "\t[--%s]\n" , Confidence.name );
 	printf( "\t\t If this flag is enabled, the size of a sample's normals is\n" );
@@ -254,9 +260,10 @@ void ShowUsage(char* ex)
 	printf( "\t[--%s]\n" , Verbose.name );
 	printf( "\t\t If this flag is enabled, the progress of the reconstructor will be output to STDOUT.\n" );
 }
-template< class Real , int Degree , class Vertex >
+template< class Real , class Vertex >
 int Execute( int argc , char* argv[] )
 {
+	Reset< Real >();
 	int i;
 	int paramNum = sizeof(params)/sizeof(cmdLineReadable*);
 	int commentNum=0;
@@ -278,14 +285,19 @@ int Execute( int argc , char* argv[] )
 		}
 		else
 		{
-			for( int i=0 ; i<4 ; i++ ) for( int j=0 ; j<4 ; j++ ) fscanf( fp , " %f " , &xForm( i , j ) );
+			for( int i=0 ; i<4 ; i++ ) for( int j=0 ; j<4 ; j++ )
+			{
+				float f;
+				fscanf( fp , " %f " , &f );
+				xForm(i,j) = (Real)f;
+			}
 			fclose( fp );
 		}
 	}
 	else xForm = XForm4x4< Real >::Identity();
 	iXForm = xForm.inverse();
 
-	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 6.11)\n" );
+	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 6.12)\n" );
 	char str[1024];
 	for( int i=0 ; i<paramNum ; i++ )
 		if( params[i]->set )
@@ -299,7 +311,7 @@ int Execute( int argc , char* argv[] )
 	double tt=Time();
 	Real isoValue = 0;
 
-	Octree< Real , Degree > tree;
+	Octree< Real > tree;
 	tree.threads = Threads.value;
 	if( !In.set )
 	{
@@ -320,8 +332,8 @@ int Execute( int argc , char* argv[] )
 
 	double maxMemoryUsage;
 	t=Time() , tree.maxMemoryUsage=0;
-	typename Octree< Real , Degree >::PointInfo* pointInfo = new typename Octree< Real , Degree >::PointInfo();
-	typename Octree< Real , Degree >::NormalInfo* normalInfo = new typename Octree< Real , Degree >::NormalInfo();
+	typename Octree< Real >::PointInfo* pointInfo = new typename Octree< Real >::PointInfo();
+	typename Octree< Real >::NormalInfo* normalInfo = new typename Octree< Real >::NormalInfo();
 	std::vector< Real >* kernelDensityWeights = new std::vector< Real >();
 	std::vector< Real >* centerWeights = new std::vector< Real >();
 	int pointCount = tree.template SetTree< float >( In.value , MinDepth.value , Depth.value , FullDepth.value , kernelDepth , Real(SamplesPerNode.value) , Scale.value , Confidence.set , NormalWeights.set , PointWeight.value , AdaptiveExponent.value , *pointInfo , *normalInfo , *kernelDensityWeights , *centerWeights , BoundaryType.value , xForm , Complete.set );
@@ -437,8 +449,12 @@ int main( int argc , char* argv[] )
 	double t = Time();
 
 	cmdLineParse( argc-1 , &argv[1] , sizeof(params)/sizeof(cmdLineReadable*) , params , 1 );
-	if( Double.set ) Execute< double , 2 , PlyValueVertex< float > >( argc , argv );
-	else             Execute< float  , 2 , PlyValueVertex< float > >( argc , argv );
+	if( Density.set )
+		if( Double.set ) Execute< double , PlyValueVertex< float > >( argc , argv );
+		else             Execute< float  , PlyValueVertex< float > >( argc , argv );
+	else
+		if( Double.set ) Execute< double , PlyVertex< float > >( argc , argv );
+		else             Execute< float  , PlyVertex< float > >( argc , argv );
 #ifdef _WIN32
 	if( Performance.set )
 	{
