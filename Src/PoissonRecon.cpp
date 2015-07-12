@@ -264,7 +264,7 @@ int Execute( int argc , char* argv[] )
 	else xForm = XForm4x4< Real >::Identity();
 	iXForm = xForm.inverse();
 
-	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 5.6)\n" );
+	DumpOutput2( comments[commentNum++] , "Running Screened Poisson Reconstruction (Version 5.7)\n" );
 	char str[1024];
 	for( int i=0 ; i<paramNum ; i++ )
 		if( params[i]->set )
@@ -317,7 +317,7 @@ int Execute( int argc , char* argv[] )
 
 	DumpOutput2( comments[commentNum++] , "#             Tree set in: %9.1f (s), %9.1f (MB)\n" , Time()-t , tree.maxMemoryUsage );
 	DumpOutput( "Input Points: %d\n" , pointCount );
-	DumpOutput( "Leaves/Nodes: %d/%d\n" , tree.tree.leaves() , tree.tree.nodes() );
+	DumpOutput( "Leaves/Nodes: %lld/%lld\n" , tree.tree.leaves() , tree.tree.nodes() );
 	DumpOutput( "Memory Usage: %.3f MB\n" , float( MemoryInfo::Usage() )/(1<<20) );
 
 	maxMemoryUsage = tree.maxMemoryUsage;
